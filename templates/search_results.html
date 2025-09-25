@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1>
+            <i class="fas fa-search"></i> Search Results
+            {% if query %}
+                for "{{ query }}"
+            {% endif %}
+        </h1>
+    </div>
+</div>
+
+{% if query %}
+    {% set total_results = results.vocabulary|length + results.phrasal_verbs|length + results.idioms|length %}
+    
+    {% if total_results > 0 %}
+        <div class="alert alert-info">
+            Found {{ total_results }} result{{ 's' if total_results != 1 else '' }} for "{{ query }}"
+        </div>
+
+        {% if results.vocabulary %}
+            <div class="search-result-category">
+                <h3><i class="fas fa-book text-primary"></i> Vocabulary Words ({{ results.vocabulary|length }})</h3>
+                <div class="row">
+                    {% for word in results.vocabulary %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="search-result-item">
+                                <h5>{{ word.word }}
+                                    {% if word.pronunciation %}
+                                        <small class="text-muted">{{ word.pronunciation }}</small>
+                                    {% endif %}
+                                </h5>
+                                {% if word.part_of_speech %}
+                                    <span class="badge bg-secondary mb-2">{{ word.part_of_speech }}</span>
+                                {% endif %}
+                                <p>{{ word.definition }}</p>
+                                {% if word.example_sentence %}
+                                    <blockquote class="blockquote-footer">
+                                        <small>{{ word.example_sentence }}</small>
+                                    </blockquote>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <a href="{{ url_for('edit_vocabulary', id=word.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if results.phrasal_verbs %}
+            <div class="search-result-category">
+                <h3><i class="fas fa-link text-success"></i> Phrasal Verbs ({{ results.phrasal_verbs|length }})</h3>
+                <div class="row">
+                    {% for phrasal in results.phrasal_verbs %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="search-result-item">
+                                <h5>{{ phrasal.phrasal_verb }}</h5>
+                                {% if phrasal.separable %}
+                                    <span class="badge bg-info mb-2">Separable</span>
+                                {% endif %}
+                                <p>{{ phrasal.meaning }}</p>
+                                {% if phrasal.example_sentence %}
+                                    <blockquote class="blockquote-footer">
+                                        <small>{{ phrasal.example_sentence }}</small>
+                                    </blockquote>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <a href="{{ url_for('edit_phrasal_verb', id=phrasal.id) }}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {% if results.idioms %}
+            <div class="search-result-category">
+                <h3><i class="fas fa-quote-left text-info"></i> Idioms ({{ results.idioms|length }})</h3>
+                <div class="row">
+                    {% for idiom in results.idioms %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="search-result-item">
+                                <h5>{{ idiom.idiom }}</h5>
+                                <p>{{ idiom.meaning }}</p>
+                                {% if idiom.example_sentence %}
+                                    <blockquote class="blockquote-footer">
+                                        <small>{{ idiom.example_sentence }}</small>
+                                    </blockquote>
+                                {% endif %}
+                                {% if idiom.origin %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <strong>Origin:</strong> {{ idiom.origin[:100] }}{% if idiom.origin|length > 100 %}...{% endif %}
+                                        </small>
+                                    </div>
+                                {% endif %}
+                                <div class="mt-2">
+                                    <a href="{{ url_for('edit_idiom', id=idiom.id) }}" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="text-center">
+            <div class="card">
+                <div class="card-body">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5>No results found</h5>
+                    <p class="text-muted">Try searching with different keywords or check your spelling.</p>
+                    <div class="mt-3">
+                        <a href="{{ url_for('add_vocabulary') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-plus"></i> Add Vocabulary
+                        </a>
+                        <a href="{{ url_for('add_phrasal_verb') }}" class="btn btn-success me-2">
+                            <i class="fas fa-plus"></i> Add Phrasal Verb
+                        </a>
+                        <a href="{{ url_for('add_idiom') }}" class="btn btn-info">
+                            <i class="fas fa-plus"></i> Add Idiom
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% else %}
+    <div class="text-center">
+        <div class="card">
+            <div class="card-body">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>Enter a search term</h5>
+                <p class="text-muted">Use the search box in the navigation bar to find vocabulary words, phrasal verbs, or idioms.</p>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

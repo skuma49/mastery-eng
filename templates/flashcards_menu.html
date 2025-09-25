@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Flashcards - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="text-center mb-5">
+            <i class="fas fa-clone"></i> Practice with Flashcards
+        </h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column">
+                <i class="fas fa-book fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Vocabulary Words</h5>
+                <p class="card-text flex-grow-1">Practice your vocabulary words and improve your word knowledge.</p>
+                <a href="{{ url_for('flashcards', category='vocabulary') }}" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Practice
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column">
+                <i class="fas fa-link fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Phrasal Verbs</h5>
+                <p class="card-text flex-grow-1">Master phrasal verbs and their meanings through interactive practice.</p>
+                <a href="{{ url_for('flashcards', category='phrasal-verbs') }}" class="btn btn-success">
+                    <i class="fas fa-play"></i> Start Practice
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column">
+                <i class="fas fa-quote-left fa-3x text-info mb-3"></i>
+                <h5 class="card-title">Idioms</h5>
+                <p class="card-text flex-grow-1">Learn and practice idioms to make your English more natural and fluent.</p>
+                <a href="{{ url_for('flashcards', category='idioms') }}" class="btn btn-info">
+                    <i class="fas fa-play"></i> Start Practice
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle"></i> How Flashcards Work
+                </h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Click on a card to reveal the answer</li>
+                            <li><i class="fas fa-check text-success"></i> Rate your knowledge as "Got it" or "Need more practice"</li>
+                            <li><i class="fas fa-check text-success"></i> Cards are shuffled for better learning</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Track your progress and mastery level</li>
+                            <li><i class="fas fa-check text-success"></i> Focus on areas that need improvement</li>
+                            <li><i class="fas fa-check text-success"></i> Regular practice improves retention</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

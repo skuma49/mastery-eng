@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Phrasal Verbs - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-link"></i> Phrasal Verbs
+            </h1>
+            <a href="{{ url_for('add_phrasal_verb') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add New Phrasal Verb
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if phrasal_verbs.items %}
+    <div class="row">
+        {% for phrasal in phrasal_verbs.items %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ phrasal.phrasal_verb }}</h5>
+                        <span class="badge bg-{% if phrasal.difficulty_level == 'easy' %}success{% elif phrasal.difficulty_level == 'hard' %}danger{% else %}warning{% endif %} mb-2">
+                            {{ phrasal.difficulty_level.title() }}
+                        </span>
+                        {% if phrasal.separable %}
+                            <span class="badge bg-info mb-2">Separable</span>
+                        {% endif %}
+                        <p class="card-text">{{ phrasal.meaning }}</p>
+                        {% if phrasal.example_sentence %}
+                            <blockquote class="blockquote-footer">
+                                <small>{{ phrasal.example_sentence }}</small>
+                            </blockquote>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Added: {{ phrasal.date_added.strftime('%b %d, %Y') }}
+                            </small>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_phrasal_verb', id=phrasal.id) }}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ phrasal.phrasal_verb }}', '{{ url_for('delete_phrasal_verb', id=phrasal.id) }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% if phrasal.times_practiced > 0 %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Practiced: {{ phrasal.times_practiced }} times
+                                    | Mastery: 
+                                    <span class="badge bg-{% if phrasal.mastery_level >= 4 %}success{% elif phrasal.mastery_level >= 2 %}warning{% else %}danger{% endif %}">
+                                        {{ phrasal.mastery_level }}/5
+                                    </span>
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if phrasal_verbs.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if phrasal_verbs.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('phrasal_verbs_list', page=phrasal_verbs.prev_num) }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in phrasal_verbs.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != phrasal_verbs.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('phrasal_verbs_list', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if phrasal_verbs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('phrasal_verbs_list', page=phrasal_verbs.next_num) }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center">
+        <div class="card">
+            <div class="card-body">
+                <i class="fas fa-link fa-3x text-muted mb-3"></i>
+                <h5>No phrasal verbs yet</h5>
+                <p class="text-muted">Start building your phrasal verb collection!</p>
+                <a href="{{ url_for('add_phrasal_verb') }}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Add Your First Phrasal Verb
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "<span id="deleteItemName"></span>"?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(itemName, deleteUrl) {
+    document.getElementById('deleteItemName').textContent = itemName;
+    document.getElementById('deleteForm').action = deleteUrl;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

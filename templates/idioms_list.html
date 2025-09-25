@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Idioms - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-quote-left"></i> Idioms
+            </h1>
+            <a href="{{ url_for('add_idiom') }}" class="btn btn-info">
+                <i class="fas fa-plus"></i> Add New Idiom
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if idioms.items %}
+    <div class="row">
+        {% for idiom in idioms.items %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ idiom.idiom }}</h5>
+                        <span class="badge bg-{% if idiom.difficulty_level == 'easy' %}success{% elif idiom.difficulty_level == 'hard' %}danger{% else %}warning{% endif %} mb-2">
+                            {{ idiom.difficulty_level.title() }}
+                        </span>
+                        <p class="card-text">{{ idiom.meaning }}</p>
+                        {% if idiom.example_sentence %}
+                            <blockquote class="blockquote-footer">
+                                <small>{{ idiom.example_sentence }}</small>
+                            </blockquote>
+                        {% endif %}
+                        {% if idiom.origin %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <strong>Origin:</strong> {{ idiom.origin[:100] }}{% if idiom.origin|length > 100 %}...{% endif %}
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Added: {{ idiom.date_added.strftime('%b %d, %Y') }}
+                            </small>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('edit_idiom', id=idiom.id) }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete('{{ idiom.idiom }}', '{{ url_for('delete_idiom', id=idiom.id) }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% if idiom.times_practiced > 0 %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    Practiced: {{ idiom.times_practiced }} times
+                                    | Mastery: 
+                                    <span class="badge bg-{% if idiom.mastery_level >= 4 %}success{% elif idiom.mastery_level >= 2 %}warning{% else %}danger{% endif %}">
+                                        {{ idiom.mastery_level }}/5
+                                    </span>
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if idioms.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if idioms.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('idioms_list', page=idioms.prev_num) }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in idioms.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != idioms.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('idioms_list', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if idioms.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('idioms_list', page=idioms.next_num) }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center">
+        <div class="card">
+            <div class="card-body">
+                <i class="fas fa-quote-left fa-3x text-muted mb-3"></i>
+                <h5>No idioms yet</h5>
+                <p class="text-muted">Start building your idiom collection to make your English more natural!</p>
+                <a href="{{ url_for('add_idiom') }}" class="btn btn-info">
+                    <i class="fas fa-plus"></i> Add Your First Idiom
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete "<span id="deleteItemName"></span>"?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(itemName, deleteUrl) {
+    document.getElementById('deleteItemName').textContent = itemName;
+    document.getElementById('deleteForm').action = deleteUrl;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

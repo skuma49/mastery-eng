@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Learning Dashboard
+        </h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card dashboard-card text-white" style="background: var(--gradient-primary);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-white">Vocabulary Words</h5>
+                        <h2 class="mb-0 text-white">{{ vocab_count }}</h2>
+                    </div>
+                    <div class="align-self-center floating-element">
+                        <i class="fas fa-book fa-3x"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('vocabulary_list') }}" class="btn btn-light btn-sm me-2">View All</a>
+                    <a href="{{ url_for('add_vocabulary') }}" class="btn btn-outline-light btn-sm">Add New</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card dashboard-card text-white" style="background: var(--gradient-success);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-white">Phrasal Verbs</h5>
+                        <h2 class="mb-0 text-white">{{ phrasal_count }}</h2>
+                    </div>
+                    <div class="align-self-center floating-element">
+                        <i class="fas fa-link fa-3x"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('phrasal_verbs_list') }}" class="btn btn-light btn-sm me-2">View All</a>
+                    <a href="{{ url_for('add_phrasal_verb') }}" class="btn btn-outline-light btn-sm">Add New</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card dashboard-card text-white" style="background: var(--gradient-info);">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-white">Idioms</h5>
+                        <h2 class="mb-0 text-white">{{ idiom_count }}</h2>
+                    </div>
+                    <div class="align-self-center floating-element">
+                        <i class="fas fa-quote-left fa-3x"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('idioms_list') }}" class="btn btn-light btn-sm me-2">View All</a>
+                    <a href="{{ url_for('add_idiom') }}" class="btn btn-outline-light btn-sm">Add New</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card dashboard-card" style="background: var(--gradient-hero); color: white;">
+            <div class="card-body text-center py-5">
+                <div class="floating-element">
+                    <i class="fas fa-clone fa-4x mb-3"></i>
+                </div>
+                <h3 class="card-title text-white mb-3">
+                    Practice with Flashcards
+                </h3>
+                <p class="card-text text-white fs-5 mb-4">Test your knowledge with interactive flashcards and track your progress</p>
+                <a href="{{ url_for('flashcards_menu') }}" class="btn btn-light btn-lg pulse-primary">
+                    <i class="fas fa-play"></i> Start Practice Session
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-book text-primary"></i> Recent Vocabulary
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if recent_vocab %}
+                    {% for word in recent_vocab %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <strong>{{ word.word }}</strong>
+                            <p class="mb-1 text-muted small">{{ word.definition[:50] }}{% if word.definition|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">{{ word.date_added.strftime('%b %d, %Y') }}</small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No vocabulary words yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-link text-success"></i> Recent Phrasal Verbs
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if recent_phrasal %}
+                    {% for phrasal in recent_phrasal %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <strong>{{ phrasal.phrasal_verb }}</strong>
+                            <p class="mb-1 text-muted small">{{ phrasal.meaning[:50] }}{% if phrasal.meaning|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">{{ phrasal.date_added.strftime('%b %d, %Y') }}</small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No phrasal verbs yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-quote-left text-info"></i> Recent Idioms
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if recent_idioms %}
+                    {% for idiom in recent_idioms %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <strong>{{ idiom.idiom }}</strong>
+                            <p class="mb-1 text-muted small">{{ idiom.meaning[:50] }}{% if idiom.meaning|length > 50 %}...{% endif %}</p>
+                            <small class="text-muted">{{ idiom.date_added.strftime('%b %d, %Y') }}</small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No idioms yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
