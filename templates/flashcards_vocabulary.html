@@ -48,18 +48,50 @@
                             <button class="btn btn-success me-2" onclick="answerCard(true)">
                                 <i class="fas fa-check"></i> Got it!
                             </button>
-                            <button class="btn btn-warning" onclick="answerCard(false)">
+                            <button class="btn btn-warning me-2" onclick="answerCard(false)">
                                 <i class="fas fa-times"></i> Need more practice
+                            </button>
+                            <button class="btn btn-info" onclick="skipCard()">
+                                <i class="fas fa-forward"></i> Skip
+                            </button>
+                        </div>
+                        
+                        <!-- Additional Navigation -->
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary me-2" onclick="previousCard()" id="prev-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="nextCard()" id="next-btn">
+                                <i class="fas fa-chevron-right"></i> Next
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <!-- Always Visible Navigation Controls -->
             <div class="text-center mt-3">
-                <button class="btn btn-outline-secondary" onclick="flipCard()" id="flip-btn">
-                    <i class="fas fa-sync-alt"></i> Flip Card
-                </button>
+                <div class="row">
+                    <div class="col-12 mb-2">
+                        <button class="btn btn-outline-secondary" onclick="flipCard()" id="flip-btn">
+                            <i class="fas fa-sync-alt"></i> Flip Card
+                        </button>
+                    </div>
+                    <div class="col-12 mb-2">
+                        <button class="btn btn-outline-primary me-2" onclick="previousCard()" id="prev-btn-always">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="nextCard()" id="next-btn-always">
+                            <i class="fas fa-chevron-right"></i> Next
+                        </button>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-info me-2" onclick="skipCard()">
+                            <i class="fas fa-forward"></i> Skip
+                        </button>
+                        <small class="text-muted">Flip card to rate your knowledge</small>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -90,6 +122,11 @@ const items = {{ items | tojson | safe }};
 let currentIndex = 0;
 let isFlipped = false;
 let correctAnswers = 0;
+
+// Check if there are any items
+if (items.length === 0) {
+    document.querySelector('.flashcard-container').innerHTML = '<div class="alert alert-info text-center"><h4>No vocabulary words found!</h4><p>Add some vocabulary words first to practice with flashcards.</p><a href="{{ url_for("add_vocabulary") }}" class="btn btn-primary">Add Vocabulary</a></div>';
+}
 
 function loadCard() {
     if (currentIndex >= items.length) {
@@ -145,13 +182,46 @@ function answerCard(correct) {
     loadCard();
 }
 
+function skipCard() {
+    currentIndex++;
+    loadCard();
+}
+
+function nextCard() {
+    if (currentIndex < items.length - 1) {
+        currentIndex++;
+        loadCard();
+    }
+}
+
+function previousCard() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        loadCard();
+    }
+}
+
 function updateProgress() {
     const progressBar = document.querySelector('.progress-bar');
     const progressText = document.getElementById('progress-text');
-    const percentage = (currentIndex / items.length) * 100;
+    const percentage = ((currentIndex + 1) / items.length) * 100;
     
     progressBar.style.width = percentage + '%';
-    progressText.textContent = `${currentIndex} / ${items.length}`;
+    progressText.textContent = `${currentIndex + 1} / ${items.length}`;
+    
+    // Update navigation button states (both sets)
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const prevBtnAlways = document.getElementById('prev-btn-always');
+    const nextBtnAlways = document.getElementById('next-btn-always');
+    
+    const isFirstCard = currentIndex === 0;
+    const isLastCard = currentIndex >= items.length - 1;
+    
+    if (prevBtn) prevBtn.disabled = isFirstCard;
+    if (nextBtn) nextBtn.disabled = isLastCard;
+    if (prevBtnAlways) prevBtnAlways.disabled = isFirstCard;
+    if (nextBtnAlways) nextBtnAlways.disabled = isLastCard;
 }
 
 function showCompletion() {

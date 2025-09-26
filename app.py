@@ -293,7 +293,11 @@ def flashcards(category):
         flash('Invalid flashcard category!', 'error')
         return redirect(url_for('index'))
     
-    return render_template(template, items=items, category=category)
+    # Convert items to dict for JSON serialization
+    items_data = [item.to_dict() for item in items]
+    random.shuffle(items_data)
+    
+    return render_template(template, items=items_data, category=category)
 
 @app.route('/api/flashcards/<category>')
 def api_flashcards(category):
@@ -308,6 +312,41 @@ def api_flashcards(category):
     
     random.shuffle(items)
     return jsonify([item.to_dict() for item in items])
+
+@app.route('/api/update-practice', methods=['POST'])
+def update_practice():
+    data = request.get_json()
+    category = data.get('category')
+    item_id = data.get('id')
+    correct = data.get('correct')
+    
+    try:
+        if category == 'vocabulary':
+            item = VocabularyWord.query.get(item_id)
+        elif category == 'phrasal-verbs':
+            item = PhrasalVerb.query.get(item_id)
+        elif category == 'idioms':
+            item = Idiom.query.get(item_id)
+        else:
+            return jsonify({'error': 'Invalid category'}), 400
+        
+        if item:
+            item.times_practiced = (item.times_practiced or 0) + 1
+            item.last_practiced = datetime.utcnow()
+            
+            # Update mastery level based on correctness
+            if correct:
+                item.mastery_level = min((item.mastery_level or 0) + 1, 5)
+            else:
+                item.mastery_level = max((item.mastery_level or 0) - 1, 0)
+            
+            db.session.commit()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Item not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Search Route
 @app.route('/search')
