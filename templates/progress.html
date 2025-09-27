@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Mastery Progress - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-chart-line"></i> Mastery Progress
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Overall Progress Overview -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                <h5>{{ overall_stats.total_items }}</h5>
+                <small class="text-muted">Total Items</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-play-circle fa-2x text-info mb-2"></i>
+                <h5>{{ overall_stats.total_practiced }}</h5>
+                <small class="text-muted">Items Practiced</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
+                <h5>{{ overall_stats.mastered_count }}</h5>
+                <small class="text-muted">Mastered</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-percentage fa-2x text-success mb-2"></i>
+                <h5>{{ overall_stats.practice_percentage }}%</h5>
+                <small class="text-muted">Practice Rate</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overall Progress Bar -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Overall Progress</h5>
+                <div class="progress" style="height: 25px;">
+                    {% set needs_percent = (overall_stats.needs_practice_count / overall_stats.total_items * 100) if overall_stats.total_items > 0 else 0 %}
+                    {% set good_percent = (overall_stats.good_progress_count / overall_stats.total_items * 100) if overall_stats.total_items > 0 else 0 %}
+                    {% set mastered_percent = (overall_stats.mastered_count / overall_stats.total_items * 100) if overall_stats.total_items > 0 else 0 %}
+                    
+                    <div class="progress-bar bg-danger" style="width: {{ needs_percent }}%">
+                        <span class="text-white">{{ overall_stats.needs_practice_count }} Need Practice</span>
+                    </div>
+                    <div class="progress-bar bg-warning" style="width: {{ good_percent }}%">
+                        <span class="text-dark">{{ overall_stats.good_progress_count }} Good Progress</span>
+                    </div>
+                    <div class="progress-bar bg-success" style="width: {{ mastered_percent }}%">
+                        <span class="text-white">{{ overall_stats.mastered_count }} Mastered</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vocabulary Progress Section -->
+{% if vocab_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-book"></i> Vocabulary Progress ({{ vocab_stats.total }})
+                        </h5>
+                        <small>{{ vocab_stats.practiced }} practiced • {{ vocab_stats.mastered }} mastered • {{ vocab_stats.practice_percentage }}% completion</small>
+                    </div>
+                    <a href="{{ url_for('flashcards', category='vocabulary') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-play"></i> Practice
+                    </a>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    {% set v_needs_percent = (vocab_stats.needs_practice / vocab_stats.total * 100) if vocab_stats.total > 0 else 0 %}
+                    {% set v_good_percent = (vocab_stats.good_progress / vocab_stats.total * 100) if vocab_stats.total > 0 else 0 %}
+                    {% set v_mastered_percent = (vocab_stats.mastered / vocab_stats.total * 100) if vocab_stats.total > 0 else 0 %}
+                    
+                    <div class="progress-bar bg-danger" style="width: {{ v_needs_percent }}%"></div>
+                    <div class="progress-bar bg-warning" style="width: {{ v_good_percent }}%"></div>
+                    <div class="progress-bar bg-success" style="width: {{ v_mastered_percent }}%"></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for item in vocab_data[:12] %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="card border-primary">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if vocab_data|length > 12 %}
+                <div class="text-center">
+                    <small class="text-muted">Showing first 12 of {{ vocab_data|length }} vocabulary words</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Phrasal Verbs Progress Section -->
+{% if phrasal_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-link"></i> Phrasal Verbs Progress ({{ phrasal_stats.total }})
+                        </h5>
+                        <small>{{ phrasal_stats.practiced }} practiced • {{ phrasal_stats.mastered }} mastered • {{ phrasal_stats.practice_percentage }}% completion</small>
+                    </div>
+                    <a href="{{ url_for('flashcards', category='phrasal-verbs') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-play"></i> Practice
+                    </a>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    {% set p_needs_percent = (phrasal_stats.needs_practice / phrasal_stats.total * 100) if phrasal_stats.total > 0 else 0 %}
+                    {% set p_good_percent = (phrasal_stats.good_progress / phrasal_stats.total * 100) if phrasal_stats.total > 0 else 0 %}
+                    {% set p_mastered_percent = (phrasal_stats.mastered / phrasal_stats.total * 100) if phrasal_stats.total > 0 else 0 %}
+                    
+                    <div class="progress-bar bg-danger" style="width: {{ p_needs_percent }}%"></div>
+                    <div class="progress-bar bg-warning" style="width: {{ p_good_percent }}%"></div>
+                    <div class="progress-bar bg-success" style="width: {{ p_mastered_percent }}%"></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for item in phrasal_data[:12] %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="card border-info">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                {% if item.separable is defined %}
+                                    <span class="badge badge-sm bg-secondary mb-1">{{ 'Separable' if item.separable else 'Inseparable' }}</span>
+                                {% endif %}
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if phrasal_data|length > 12 %}
+                <div class="text-center">
+                    <small class="text-muted">Showing first 12 of {{ phrasal_data|length }} phrasal verbs</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Idioms Progress Section -->
+{% if idiom_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-quote-left"></i> Idioms Progress ({{ idiom_stats.total }})
+                        </h5>
+                        <small>{{ idiom_stats.practiced }} practiced • {{ idiom_stats.mastered }} mastered • {{ idiom_stats.practice_percentage }}% completion</small>
+                    </div>
+                    <a href="{{ url_for('flashcards', category='idioms') }}" class="btn btn-dark btn-sm">
+                        <i class="fas fa-play"></i> Practice
+                    </a>
+                </div>
+                <div class="progress mt-2" style="height: 8px;">
+                    {% set i_needs_percent = (idiom_stats.needs_practice / idiom_stats.total * 100) if idiom_stats.total > 0 else 0 %}
+                    {% set i_good_percent = (idiom_stats.good_progress / idiom_stats.total * 100) if idiom_stats.total > 0 else 0 %}
+                    {% set i_mastered_percent = (idiom_stats.mastered / idiom_stats.total * 100) if idiom_stats.total > 0 else 0 %}
+                    
+                    <div class="progress-bar bg-danger" style="width: {{ i_needs_percent }}%"></div>
+                    <div class="progress-bar bg-warning" style="width: {{ i_good_percent }}%"></div>
+                    <div class="progress-bar bg-success" style="width: {{ i_mastered_percent }}%"></div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for item in idiom_data[:12] %}
+                    <div class="col-md-6 col-lg-3 mb-3">
+                        <div class="card border-warning">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if idiom_data|length > 12 %}
+                <div class="text-center">
+                    <small class="text-muted">Showing first 12 of {{ idiom_data|length }} idioms</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Empty State -->
+{% if overall_stats.total_items == 0 %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center">
+            <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+            <h3>No Items to Track</h3>
+            <p class="text-muted">Add some vocabulary words, phrasal verbs, or idioms to start tracking your mastery progress.</p>
+            <div class="mt-3">
+                <a href="{{ url_for('add_vocabulary') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-plus"></i> Add Vocabulary
+                </a>
+                <a href="{{ url_for('add_phrasal_verb') }}" class="btn btn-info me-2">
+                    <i class="fas fa-plus"></i> Add Phrasal Verb
+                </a>
+                <a href="{{ url_for('add_idiom') }}" class="btn btn-warning">
+                    <i class="fas fa-plus"></i> Add Idiom
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.mastery-stars {
+    font-size: 0.8rem;
+}
+.card-title {
+    margin-bottom: 0.5rem;
+}
+.progress {
+    border-radius: 10px;
+}
+.progress-bar {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

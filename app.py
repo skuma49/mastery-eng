@@ -381,6 +381,102 @@ def search():
     
     return render_template('search_results.html', query=query, results=results)
 
+@app.route('/progress')
+def progress():
+    """Show mastery progress for all items"""
+    # Get all items with their mastery levels
+    vocabulary_items = VocabularyWord.query.all()
+    phrasal_verbs = PhrasalVerb.query.all()
+    idioms = Idiom.query.all()
+    
+    # Process vocabulary
+    vocab_data = []
+    for item in vocabulary_items:
+        vocab_data.append({
+            'word': item.word,
+            'meaning': item.definition,
+            'mastery_level': item.mastery_level or 0,
+            'times_practiced': item.times_practiced or 0,
+            'last_practiced': item.last_practiced,
+            'id': item.id
+        })
+    
+    # Process phrasal verbs
+    phrasal_data = []
+    for item in phrasal_verbs:
+        phrasal_data.append({
+            'word': item.phrasal_verb,
+            'meaning': item.meaning,
+            'separable': item.separable,
+            'mastery_level': item.mastery_level or 0,
+            'times_practiced': item.times_practiced or 0,
+            'last_practiced': item.last_practiced,
+            'id': item.id
+        })
+    
+    # Process idioms
+    idiom_data = []
+    for item in idioms:
+        idiom_data.append({
+            'word': item.idiom,
+            'meaning': item.meaning,
+            'mastery_level': item.mastery_level or 0,
+            'times_practiced': item.times_practiced or 0,
+            'last_practiced': item.last_practiced,
+            'id': item.id
+        })
+    
+    # Sort each category by mastery level (lowest first)
+    vocab_data.sort(key=lambda x: (x['mastery_level'], -(x['times_practiced'] or 0)))
+    phrasal_data.sort(key=lambda x: (x['mastery_level'], -(x['times_practiced'] or 0)))
+    idiom_data.sort(key=lambda x: (x['mastery_level'], -(x['times_practiced'] or 0)))
+    
+    # Calculate category statistics
+    def calc_category_stats(items):
+        total = len(items)
+        practiced = sum(1 for item in items if item['times_practiced'] > 0)
+        needs_practice = sum(1 for item in items if item['mastery_level'] <= 2)
+        good_progress = sum(1 for item in items if 3 <= item['mastery_level'] <= 4)
+        mastered = sum(1 for item in items if item['mastery_level'] == 5)
+        
+        return {
+            'total': total,
+            'practiced': practiced,
+            'needs_practice': needs_practice,
+            'good_progress': good_progress,
+            'mastered': mastered,
+            'practice_percentage': round((practiced / total * 100) if total > 0 else 0)
+        }
+    
+    vocab_stats = calc_category_stats(vocab_data)
+    phrasal_stats = calc_category_stats(phrasal_data)
+    idiom_stats = calc_category_stats(idiom_data)
+    
+    # Calculate overall statistics
+    total_items = len(vocabulary_items) + len(phrasal_verbs) + len(idioms)
+    total_practiced = vocab_stats['practiced'] + phrasal_stats['practiced'] + idiom_stats['practiced']
+    total_needs_practice = vocab_stats['needs_practice'] + phrasal_stats['needs_practice'] + idiom_stats['needs_practice']
+    total_good_progress = vocab_stats['good_progress'] + phrasal_stats['good_progress'] + idiom_stats['good_progress']
+    total_mastered = vocab_stats['mastered'] + phrasal_stats['mastered'] + idiom_stats['mastered']
+    
+    overall_stats = {
+        'total_items': total_items,
+        'total_practiced': total_practiced,
+        'needs_practice_count': total_needs_practice,
+        'good_progress_count': total_good_progress,
+        'mastered_count': total_mastered,
+        'practice_percentage': round((total_practiced / total_items * 100) if total_items > 0 else 0)
+    }
+    
+    return render_template('progress.html', 
+                         vocab_data=vocab_data,
+                         phrasal_data=phrasal_data,
+                         idiom_data=idiom_data,
+                         vocab_stats=vocab_stats,
+                         phrasal_stats=phrasal_stats,
+                         idiom_stats=idiom_stats,
+                         overall_stats=overall_stats)
+
 if __name__ == '__main__':
     # Try different ports if default is busy, but only on first run
     import os
