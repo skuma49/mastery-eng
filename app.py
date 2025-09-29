@@ -381,6 +381,176 @@ def search():
     
     return render_template('search_results.html', query=query, results=results)
 
+@app.route('/api/check-vocabulary')
+def check_vocabulary():
+    """API endpoint to check if vocabulary word exists"""
+    query = request.args.get('q', '').lower().strip()
+    if not query:
+        return jsonify([])
+    
+    results = []
+    
+    # Search for existing vocabulary words that match the query
+    existing_words = VocabularyWord.query.filter(
+        VocabularyWord.word.ilike(f'%{query}%')
+    ).limit(8).all()
+    
+    for word in existing_words:
+        results.append({
+            'type': 'vocabulary',
+            'text': word.word,
+            'meaning': word.definition,
+            'exact_match': word.word.lower() == query,
+            'category': 'Vocabulary Word'
+        })
+    
+    # Also check phrasal verbs and idioms for cross-category duplicates
+    existing_phrasal = PhrasalVerb.query.filter(
+        PhrasalVerb.phrasal_verb.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for verb in existing_phrasal:
+        results.append({
+            'type': 'phrasal_verb',
+            'text': verb.phrasal_verb,
+            'meaning': verb.meaning,
+            'exact_match': verb.phrasal_verb.lower() == query,
+            'category': 'Phrasal Verb',
+            'separable': verb.separable
+        })
+    
+    existing_idioms = Idiom.query.filter(
+        Idiom.idiom.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for idiom in existing_idioms:
+        results.append({
+            'type': 'idiom',
+            'text': idiom.idiom,
+            'meaning': idiom.meaning,
+            'exact_match': idiom.idiom.lower() == query,
+            'category': 'Idiom'
+        })
+    
+    # Sort by exact matches first, then by category priority (vocabulary first for vocab search)
+    results.sort(key=lambda x: (not x['exact_match'], x['type'] != 'vocabulary', x['text'].lower()))
+    
+    return jsonify(results[:10])
+
+@app.route('/api/check-phrasal-verb')
+def check_phrasal_verb():
+    """API endpoint to check if phrasal verb exists (includes cross-category check)"""
+    query = request.args.get('q', '').lower().strip()
+    if not query:
+        return jsonify([])
+    
+    results = []
+    
+    # Search for existing phrasal verbs that match the query
+    existing_verbs = PhrasalVerb.query.filter(
+        PhrasalVerb.phrasal_verb.ilike(f'%{query}%')
+    ).limit(8).all()
+    
+    for verb in existing_verbs:
+        results.append({
+            'type': 'phrasal_verb',
+            'text': verb.phrasal_verb,
+            'meaning': verb.meaning,
+            'separable': verb.separable,
+            'exact_match': verb.phrasal_verb.lower() == query,
+            'category': 'Phrasal Verb'
+        })
+    
+    # Also check vocabulary and idioms for cross-category duplicates
+    existing_words = VocabularyWord.query.filter(
+        VocabularyWord.word.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for word in existing_words:
+        results.append({
+            'type': 'vocabulary',
+            'text': word.word,
+            'meaning': word.definition,
+            'exact_match': word.word.lower() == query,
+            'category': 'Vocabulary Word'
+        })
+    
+    existing_idioms = Idiom.query.filter(
+        Idiom.idiom.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for idiom in existing_idioms:
+        results.append({
+            'type': 'idiom',
+            'text': idiom.idiom,
+            'meaning': idiom.meaning,
+            'exact_match': idiom.idiom.lower() == query,
+            'category': 'Idiom'
+        })
+    
+    # Sort by exact matches first, then by category priority (phrasal verbs first for phrasal verb search)
+    results.sort(key=lambda x: (not x['exact_match'], x['type'] != 'phrasal_verb', x['text'].lower()))
+    
+    return jsonify(results[:10])
+
+@app.route('/api/check-idiom')
+def check_idiom():
+    """API endpoint to check if idiom exists (includes cross-category check)"""
+    query = request.args.get('q', '').lower().strip()
+    if not query:
+        return jsonify([])
+    
+    results = []
+    
+    # Search for existing idioms that match the query
+    existing_idioms = Idiom.query.filter(
+        Idiom.idiom.ilike(f'%{query}%')
+    ).limit(8).all()
+    
+    for idiom in existing_idioms:
+        results.append({
+            'type': 'idiom',
+            'text': idiom.idiom,
+            'meaning': idiom.meaning,
+            'exact_match': idiom.idiom.lower() == query,
+            'category': 'Idiom'
+        })
+    
+    # Also check vocabulary and phrasal verbs for cross-category duplicates
+    existing_words = VocabularyWord.query.filter(
+        VocabularyWord.word.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for word in existing_words:
+        results.append({
+            'type': 'vocabulary',
+            'text': word.word,
+            'meaning': word.definition,
+            'exact_match': word.word.lower() == query,
+            'category': 'Vocabulary Word'
+        })
+    
+    existing_verbs = PhrasalVerb.query.filter(
+        PhrasalVerb.phrasal_verb.ilike(f'%{query}%')
+    ).limit(3).all()
+    
+    for verb in existing_verbs:
+        results.append({
+            'type': 'phrasal_verb',
+            'text': verb.phrasal_verb,
+            'meaning': verb.meaning,
+            'exact_match': verb.phrasal_verb.lower() == query,
+            'category': 'Phrasal Verb',
+            'separable': verb.separable
+        })
+    
+    # Sort by exact matches first, then by category priority (idioms first for idiom search)
+    results.sort(key=lambda x: (not x['exact_match'], x['type'] != 'idiom', x['text'].lower()))
+    
+    return jsonify(results[:10])
+
+
+
 @app.route('/progress')
 def progress():
     """Show mastery progress for all items"""

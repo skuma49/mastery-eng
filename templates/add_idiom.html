@@ -60,4 +60,158 @@
         </div>
     </div>
 </div>
+
+<!-- Suggestions dropdown -->
+<div id="idiom-suggestions" class="position-absolute bg-white border rounded shadow-sm" style="display: none; z-index: 1000; max-height: 300px; overflow-y: auto;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const idiomInput = document.getElementById('idiom');
+    const suggestionsDiv = document.getElementById('idiom-suggestions');
+    let debounceTimer;
+
+    idiomInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            hideSuggestions();
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            fetch(`/api/check-idiom?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    showSuggestions(data, idiomInput);
+                })
+                .catch(error => {
+                    console.error('Error fetching suggestions:', error);
+                    hideSuggestions();
+                });
+        }, 300);
+    });
+
+    idiomInput.addEventListener('blur', function() {
+        setTimeout(() => hideSuggestions(), 150);
+    });
+
+    idiomInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            this.dispatchEvent(new Event('input'));
+        }
+    });
+
+    function showSuggestions(suggestions, inputElement) {
+        if (suggestions.length === 0) {
+            hideSuggestions();
+            return;
+        }
+
+        let html = '';
+        suggestions.forEach(suggestion => {
+            const isExactMatch = suggestion.exact_match;
+            const isCrossCategory = suggestion.type !== 'idiom';
+            
+            let cardClass, iconClass, statusText, badgeClass;
+            
+            if (isExactMatch) {
+                cardClass = 'border-danger bg-danger-subtle';
+                iconClass = 'fa-exclamation-triangle text-danger';
+                statusText = isCrossCategory ? `Exists as ${suggestion.category}!` : 'Already exists!';
+                badgeClass = 'bg-danger';
+            } else {
+                cardClass = isCrossCategory ? 'border-info bg-info-subtle' : 'border-warning bg-warning-subtle';
+                iconClass = isCrossCategory ? 'fa-info-circle text-info' : 'fa-info-circle text-warning';
+                statusText = isCrossCategory ? `Similar ${suggestion.category} found` : 'Similar idiom found';
+                badgeClass = isCrossCategory ? 'bg-info' : 'bg-warning';
+            }
+            
+            let extraInfo = '';
+            if (suggestion.type === 'phrasal_verb' && suggestion.separable !== undefined) {
+                extraInfo = `<small class="badge ${suggestion.separable ? 'bg-success' : 'bg-secondary'} ms-1">${suggestion.separable ? 'Separable' : 'Inseparable'}</small>`;
+            }
+            
+            html += `
+                <div class="suggestion-item p-3 border-bottom ${cardClass}" style="cursor: pointer;">
+                    <div class="d-flex align-items-start">
+                        <i class="fas ${iconClass} me-2 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>${suggestion.text}</strong>
+                                <div>
+                                    <small class="badge ${badgeClass}">${statusText}</small>
+                                    ${extraInfo}
+                                </div>
+                            </div>
+                            <p class="mb-0 small text-muted">${suggestion.meaning}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        suggestionsDiv.innerHTML = html;
+        
+        // Position the suggestions dropdown
+        const rect = inputElement.getBoundingClientRect();
+        suggestionsDiv.style.display = 'block';
+        suggestionsDiv.style.left = rect.left + 'px';
+        suggestionsDiv.style.top = (rect.bottom + window.scrollY) + 'px';
+        suggestionsDiv.style.width = rect.width + 'px';
+
+        // Add click handlers to suggestions
+        suggestionsDiv.querySelectorAll('.suggestion-item').forEach((item, index) => {
+            item.addEventListener('click', function() {
+                const suggestion = suggestions[index];
+                const text = suggestion.text;
+                const category = suggestion.category;
+                
+                let redirectUrl = '/idioms';
+                if (suggestion.type === 'vocabulary') {
+                    redirectUrl = '/vocabulary';
+                } else if (suggestion.type === 'phrasal_verb') {
+                    redirectUrl = '/phrasal-verbs';
+                }
+                
+                if (confirm(`"${text}" already exists as a ${category}. Do you want to view the ${category.toLowerCase()} list instead?`)) {
+                    window.location.href = redirectUrl;
+                }
+            });
+        });
+    }
+
+    function hideSuggestions() {
+        suggestionsDiv.style.display = 'none';
+        suggestionsDiv.innerHTML = '';
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!idiomInput.contains(event.target) && !suggestionsDiv.contains(event.target)) {
+            hideSuggestions();
+        }
+    });
+});
+</script>
+
+<style>
+.suggestion-item:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.bg-danger-subtle {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.bg-warning-subtle {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.bg-info-subtle {
+    background-color: rgba(13, 202, 240, 0.1) !important;
+}
+</style>
 {% endblock %}
