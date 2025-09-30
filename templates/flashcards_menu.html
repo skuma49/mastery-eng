@@ -18,9 +18,14 @@
                 <i class="fas fa-book fa-3x text-primary mb-3"></i>
                 <h5 class="card-title">Vocabulary Words</h5>
                 <p class="card-text flex-grow-1">Practice your vocabulary words and improve your word knowledge.</p>
-                <a href="{{ url_for('flashcards', category='vocabulary') }}" class="btn btn-primary">
-                    <i class="fas fa-play"></i> Start Practice
-                </a>
+                <div class="btn-group-vertical w-100" role="group">
+                    <a href="{{ url_for('flashcards', category='vocabulary') }}" class="btn btn-primary mb-2">
+                        <i class="fas fa-play"></i> Full Practice
+                    </a>
+                    <a href="{{ url_for('flashcards', category='vocabulary', limit=10) }}" class="btn btn-outline-primary">
+                        <i class="fas fa-bolt"></i> Mini Practice (10 cards)
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -31,9 +36,14 @@
                 <i class="fas fa-link fa-3x text-success mb-3"></i>
                 <h5 class="card-title">Phrasal Verbs</h5>
                 <p class="card-text flex-grow-1">Master phrasal verbs and their meanings through interactive practice.</p>
-                <a href="{{ url_for('flashcards', category='phrasal-verbs') }}" class="btn btn-success">
-                    <i class="fas fa-play"></i> Start Practice
-                </a>
+                <div class="btn-group-vertical w-100" role="group">
+                    <a href="{{ url_for('flashcards', category='phrasal-verbs') }}" class="btn btn-success mb-2">
+                        <i class="fas fa-play"></i> Full Practice
+                    </a>
+                    <a href="{{ url_for('flashcards', category='phrasal-verbs', limit=10) }}" class="btn btn-outline-success">
+                        <i class="fas fa-bolt"></i> Mini Practice (10 cards)
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -44,9 +54,14 @@
                 <i class="fas fa-quote-left fa-3x text-info mb-3"></i>
                 <h5 class="card-title">Idioms</h5>
                 <p class="card-text flex-grow-1">Learn and practice idioms to make your English more natural and fluent.</p>
-                <a href="{{ url_for('flashcards', category='idioms') }}" class="btn btn-info">
-                    <i class="fas fa-play"></i> Start Practice
-                </a>
+                <div class="btn-group-vertical w-100" role="group">
+                    <a href="{{ url_for('flashcards', category='idioms') }}" class="btn btn-info mb-2">
+                        <i class="fas fa-play"></i> Full Practice
+                    </a>
+                    <a href="{{ url_for('flashcards', category='idioms', limit=10) }}" class="btn btn-outline-info">
+                        <i class="fas fa-bolt"></i> Mini Practice (10 cards)
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -61,17 +76,28 @@
                 </h5>
                 <div class="row">
                     <div class="col-md-6">
+                        <h6 class="text-primary"><i class="fas fa-play"></i> Full Practice</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="fas fa-check text-success"></i> Practice all available items</li>
+                            <li><i class="fas fa-check text-success"></i> Comprehensive review session</li>
+                            <li><i class="fas fa-check text-success"></i> Best for thorough learning</li>
+                        </ul>
+                        
+                        <h6 class="text-warning"><i class="fas fa-bolt"></i> Mini Practice</h6>
                         <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-success"></i> Click on a card to reveal the answer</li>
-                            <li><i class="fas fa-check text-success"></i> Rate your knowledge as "Got it" or "Need more practice"</li>
-                            <li><i class="fas fa-check text-success"></i> Cards are shuffled for better learning</li>
+                            <li><i class="fas fa-check text-success"></i> Quick 10-card sessions</li>
+                            <li><i class="fas fa-check text-success"></i> Perfect for short breaks</li>
+                            <li><i class="fas fa-check text-success"></i> Ideal for daily practice</li>
                         </ul>
                     </div>
                     <div class="col-md-6">
+                        <h6 class="text-info"><i class="fas fa-graduation-cap"></i> Learning Features</h6>
                         <ul class="list-unstyled">
-                            <li><i class="fas fa-check text-success"></i> Track your progress and mastery level</li>
-                            <li><i class="fas fa-check text-success"></i> Focus on areas that need improvement</li>
-                            <li><i class="fas fa-check text-success"></i> Regular practice improves retention</li>
+                            <li><i class="fas fa-check text-success"></i> Click cards to reveal answers</li>
+                            <li><i class="fas fa-check text-success"></i> Rate your knowledge honestly</li>
+                            <li><i class="fas fa-check text-success"></i> Cards are randomly shuffled</li>
+                            <li><i class="fas fa-check text-success"></i> Track progress and mastery</li>
+                            <li><i class="fas fa-check text-success"></i> Focus on weak areas</li>
                         </ul>
                     </div>
                 </div>

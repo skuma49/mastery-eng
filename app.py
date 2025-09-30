@@ -290,6 +290,9 @@ def flashcards_menu():
 
 @app.route('/flashcards/<category>')
 def flashcards(category):
+    # Get limit parameter for mini practice
+    limit = request.args.get('limit', type=int)
+    
     if category == 'vocabulary':
         items = VocabularyWord.query.all()
         template = 'flashcards_vocabulary.html'
@@ -307,10 +310,21 @@ def flashcards(category):
     items_data = [item.to_dict() for item in items]
     random.shuffle(items_data)
     
-    return render_template(template, items=items_data, category=category)
+    # Apply limit for mini practice if specified
+    if limit and limit > 0:
+        items_data = items_data[:limit]
+        practice_type = f"Mini Practice ({len(items_data)} cards)"
+    else:
+        practice_type = f"Full Practice ({len(items_data)} cards)"
+    
+    return render_template(template, items=items_data, category=category, 
+                         practice_type=practice_type, is_mini=bool(limit))
 
 @app.route('/api/flashcards/<category>')
 def api_flashcards(category):
+    # Get limit parameter for mini practice
+    limit = request.args.get('limit', type=int)
+    
     if category == 'vocabulary':
         items = VocabularyWord.query.all()
     elif category == 'phrasal-verbs':
@@ -321,7 +335,13 @@ def api_flashcards(category):
         return jsonify({'error': 'Invalid category'}), 400
     
     random.shuffle(items)
-    return jsonify([item.to_dict() for item in items])
+    items_data = [item.to_dict() for item in items]
+    
+    # Apply limit for mini practice if specified
+    if limit and limit > 0:
+        items_data = items_data[:limit]
+    
+    return jsonify(items_data)
 
 @app.route('/api/update-practice', methods=['POST'])
 def update_practice():
