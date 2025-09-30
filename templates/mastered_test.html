@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}Advanced Test - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-brain text-primary"></i> Advanced Mastery Test
+            </h1>
+            <a href="{{ url_for('mastered_words') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Mastered Words
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Test Instructions -->
+<div class="row mb-4" id="instructions-section">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Test Instructions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Test Format:</h6>
+                        <ul>
+                            <li><i class="fas fa-pen-fancy text-primary"></i> <strong>Creative sentence writing</strong></li>
+                            <li><i class="fas fa-brain text-info"></i> <strong>No definitions provided</strong> - prove your mastery!</li>
+                            <li><i class="fas fa-sync text-success"></i> Dynamic test adapts to your current mastered words</li>
+                            <li><i class="fas fa-download text-warning"></i> Results exported as JSON for external evaluation</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-warning">Challenge Mode:</h6>
+                        <ul>
+                            <li><strong>No hints or definitions</strong> - only the word is shown</li>
+                            <li>Write <strong>original, creative sentences</strong> that prove understanding</li>
+                            <li>Results downloaded as <strong>JSON for external evaluation</strong></li>
+                            <li>Poor performance will <strong>reset words to practice mode</strong></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary btn-lg" onclick="startTest()">
+                        <i class="fas fa-play"></i> Start Advanced Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Section -->
+<div class="row mb-4 d-none" id="loading-section">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted">Preparing your personalized test...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Section -->
+<div class="row d-none" id="test-section">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-gradient-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <span id="question-counter">Question 1 of 10</span>
+                    </h5>
+                    <div class="progress" style="width: 200px; height: 8px;">
+                        <div class="progress-bar" role="progressbar" id="progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body" id="question-container">
+                <!-- Questions will be loaded here -->
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-secondary" id="prev-btn" onclick="previousQuestion()" disabled>
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn btn-success d-none" id="submit-btn" onclick="submitTest()">
+                        <i class="fas fa-check"></i> Submit Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="row d-none" id="results-section">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i> Test Results
+                </h5>
+            </div>
+            <div class="card-body" id="results-container">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let testQuestions = [];
+let currentQuestionIndex = 0;
+let userAnswers = [];
+
+function startTest() {
+    document.getElementById('instructions-section').classList.add('d-none');
+    document.getElementById('loading-section').classList.remove('d-none');
+    
+    // Fetch test questions
+    fetch('/api/mastered-test-questions')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('loading-section').classList.add('d-none');
+            
+            if (!data.success || data.questions.length === 0) {
+                alert(data.message || 'No mastered words found for testing!');
+                window.location.href = '/mastered';
+                return;
+            }
+            
+            testQuestions = data.questions;
+            userAnswers = new Array(testQuestions.length).fill(null);
+            currentQuestionIndex = 0;
+            
+            document.getElementById('test-section').classList.remove('d-none');
+            displayQuestion();
+        })
+        .catch(error => {
+            console.error('Error loading test:', error);
+            alert('Error loading test. Please try again.');
+            window.location.href = '/mastered';
+        });
+}
+
+function displayQuestion() {
+    const question = testQuestions[currentQuestionIndex];
+    const container = document.getElementById('question-container');
+    
+    // Update counter and progress
+    document.getElementById('question-counter').textContent = 
+        `Question ${currentQuestionIndex + 1} of ${testQuestions.length}`;
+    
+    const progress = ((currentQuestionIndex + 1) / testQuestions.length) * 100;
+    document.getElementById('progress-bar').style.width = `${progress}%`;
+    
+    // All questions are sentence writing format
+    const savedSentence = userAnswers[currentQuestionIndex] || '';
+    let questionHTML = `
+        <div class="question-content">
+            <div class="question-header mb-4">
+                <span class="badge bg-${question.category === 'vocabulary' ? 'primary' : question.category === 'phrasal_verb' ? 'success' : 'info'} mb-3">
+                    ${question.category === 'phrasal_verb' ? 'Phrasal Verb' : question.category.charAt(0).toUpperCase() + question.category.slice(1)}
+                </span>
+                <h4 class="mb-0 text-primary">${question.question}</h4>
+                <p class="text-muted mt-2">${question.instructions}</p>
+            </div>
+            
+            <div class="word-display-card mb-4">
+                <div class="card border-primary">
+                    <div class="card-body text-center py-4">
+                        <h2 class="text-primary mb-2">
+                            <strong>"${question.word}"</strong>
+                            ${question.pronunciation ? `<small class="text-muted ms-2">[${question.pronunciation}]</small>` : ''}
+                        </h2>
+                        <span class="badge bg-${question.category === 'vocabulary' ? 'primary' : question.category === 'phrasal_verb' ? 'success' : 'info'} fs-6">
+                            ${question.category === 'phrasal_verb' ? 'Phrasal Verb' : question.category.charAt(0).toUpperCase() + question.category.slice(1)}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="answer-section mb-4">
+                <label for="sentence-input" class="form-label h6">
+                    <i class="fas fa-pen-fancy text-primary"></i> Write your creative sentence:
+                </label>
+                <textarea class="form-control form-control-lg" id="sentence-input" rows="3"
+                          placeholder="Write an original, creative sentence using '${question.word}' that shows you truly understand its meaning..."
+                          onchange="saveAnswer(this.value)" oninput="saveAnswer(this.value)">${savedSentence}</textarea>
+                <small class="form-text text-muted">
+                    <i class="fas fa-lightbulb"></i> <strong>Challenge:</strong> Demonstrate your mastery by using '${question.word}' correctly in context without any hints!
+                </small>
+                <div class="mt-2">
+                    <small class="text-info">
+                        Characters: <span id="char-count">${savedSentence.length}</span> | 
+                        Words: <span id="word-count">${savedSentence.trim() ? savedSentence.trim().split(/\s+/).length : 0}</span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = questionHTML;
+    
+    // Focus on the textarea for better UX
+    setTimeout(() => {
+        const textarea = document.getElementById('sentence-input');
+        if (textarea) {
+            textarea.focus();
+            // Add real-time character and word counting
+            textarea.addEventListener('input', function() {
+                const text = this.value;
+                document.getElementById('char-count').textContent = text.length;
+                document.getElementById('word-count').textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+            });
+        }
+    }, 100);
+    
+    // Update navigation buttons
+    document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+    
+    if (currentQuestionIndex === testQuestions.length - 1) {
+        document.getElementById('next-btn').classList.add('d-none');
+        document.getElementById('submit-btn').classList.remove('d-none');
+    } else {
+        document.getElementById('next-btn').classList.remove('d-none');
+        document.getElementById('submit-btn').classList.add('d-none');
+    }
+}
+
+function saveAnswer(answer) {
+    userAnswers[currentQuestionIndex] = answer;
+}
+
+function nextQuestion() {
+    if (currentQuestionIndex < testQuestions.length - 1) {
+        currentQuestionIndex++;
+        displayQuestion();
+    }
+}
+
+function previousQuestion() {
+    if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayQuestion();
+    }
+}
+
+function submitTest() {
+    // Check if all questions are answered
+    const unansweredQuestions = userAnswers.filter(answer => !answer || answer.trim() === '').length;
+    
+    if (unansweredQuestions > 0) {
+        if (!confirm(`You have ${unansweredQuestions} unanswered question(s). Do you want to submit anyway?`)) {
+            return;
+        }
+    }
+    
+    // Prepare responses for sentence writing test
+    const responses = testQuestions.map((question, index) => {
+        const userSentence = userAnswers[index] || '';
+        
+        return {
+            id: question.id,
+            type: question.type,
+            word: question.word,
+            user_sentence: userSentence,
+            question: question.question,
+            instructions: question.instructions
+        };
+    });
+    
+    // Submit test
+    fetch('/api/submit-mastered-test', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ responses: responses })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResults(data);
+        } else {
+            alert('Error submitting test. Please try again.');
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting test:', error);
+        alert('Error submitting test. Please try again.');
+    });
+}
+
+function downloadJSON(jsonData, filename) {
+    const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function displayResults(data) {
+    document.getElementById('test-section').classList.add('d-none');
+    document.getElementById('results-section').classList.remove('d-none');
+    
+    const container = document.getElementById('results-container');
+    
+    let resultHTML = `
+        <div class="text-center mb-4">
+            <div class="mb-4">
+                <i class="fas fa-check-circle fa-4x text-success"></i>
+            </div>
+            <h3 class="text-success mb-3">
+                <i class="fas fa-pen-fancy"></i> Test Completed Successfully!
+            </h3>
+            <h4>Your ${data.test_result.test_metadata.total_questions} sentence responses have been collected</h4>
+            <p class="text-muted">${data.message}</p>
+        </div>
+        
+        <div class="card border-info mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-download"></i> Download Test Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">
+                    Your test responses have been compiled into a comprehensive JSON file for external evaluation. 
+                    The file contains your sentences along with word details and evaluation criteria.
+                </p>
+                <button class="btn btn-primary btn-lg" onclick="downloadTestResults()">
+                    <i class="fas fa-download"></i> Download JSON Results
+                </button>
+                <small class="text-muted d-block mt-2">
+                    Filename: ${data.download_filename}
+                </small>
+            </div>
+        </div>
+        
+        <div class="card border-warning mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Evaluation Instructions
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>For External Evaluators:</strong></p>
+                <ul>
+                    <li><strong>Word Usage:</strong> Check if each target word is used correctly in context</li>
+                    <li><strong>Understanding:</strong> Verify that the sentence demonstrates understanding of the word's meaning</li>
+                    <li><strong>Grammar:</strong> Ensure the sentence is grammatically correct</li>
+                    <li><strong>Creativity:</strong> Assess if the usage is creative and original</li>
+                    <li><strong>Overall Score:</strong> Rate each sentence from 0-100 based on overall quality</li>
+                </ul>
+                <p class="mb-0">
+                    <small class="text-muted">
+                        After evaluation, use the results to submit back to the system for mastery level updates.
+                    </small>
+                </p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Your Responses Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+    `;
+    
+    // Show summary of responses
+    data.test_result.questions_and_responses.forEach((response, index) => {
+        const wordType = response.word_type === 'phrasal_verb' ? 'Phrasal Verb' : response.word_type.charAt(0).toUpperCase() + response.word_type.slice(1);
+        resultHTML += `
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border-left-${response.word_type === 'vocabulary' ? 'primary' : response.word_type === 'phrasal_verb' ? 'success' : 'info'}">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <span class="badge bg-${response.word_type === 'vocabulary' ? 'primary' : response.word_type === 'phrasal_verb' ? 'success' : 'info'}">${wordType}</span>
+                            ${response.target_word}
+                        </h6>
+                        <p class="card-text">
+                            <strong>Your sentence:</strong><br>
+                            <em>"${response.user_sentence || 'No response provided'}"</em>
+                        </p>
+                        <small class="text-muted">
+                            <strong>Meaning:</strong> ${response.word_details.definition_or_meaning}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    resultHTML += `
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="/mastered" class="btn btn-primary me-2">
+                <i class="fas fa-trophy"></i> View Mastered Words
+            </a>
+            <a href="/progress" class="btn btn-success me-2">
+                <i class="fas fa-chart-line"></i> View Progress
+            </a>
+            <a href="/" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+        </div>
+    `;
+    
+    container.innerHTML = resultHTML;
+    
+    // Store the test result data for downloading
+    window.testResultData = data.test_result;
+    window.downloadFilename = data.download_filename;
+}
+
+function downloadTestResults() {
+    if (window.testResultData && window.downloadFilename) {
+        downloadJSON(window.testResultData, window.downloadFilename);
+    } else {
+        alert('Test result data not available for download.');
+    }
+}
+</script>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+
+.progress {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.progress-bar {
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+#sentence-input {
+    font-size: 1.1rem;
+    padding: 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+    resize: vertical;
+    min-height: 120px;
+}
+
+#sentence-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.display-4 .badge {
+    font-size: 3rem;
+}
+
+.question-content {
+    padding: 20px 0;
+}
+
+.question-header {
+    border-bottom: 2px solid #f8f9fa;
+    padding-bottom: 15px;
+}
+
+.answer-section {
+    padding: 20px 0;
+}
+
+.context-info {
+    margin-top: 20px;
+}
+
+.context-info .card {
+    border-left: 4px solid #17a2b8;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+}
+
+.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+
+.border-left-success {
+    border-left: 4px solid #28a745 !important;
+}
+
+.border-left-info {
+    border-left: 4px solid #17a2b8 !important;
+}
+
+.word-details-card .card {
+    transition: box-shadow 0.3s ease;
+}
+
+.word-details-card .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

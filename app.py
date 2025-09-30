@@ -117,6 +117,12 @@ def index():
     phrasal_count = PhrasalVerb.query.count()
     idiom_count = Idiom.query.count()
     
+    # Get mastered counts
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).count()
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).count()
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).count()
+    total_mastered = mastered_vocab + mastered_phrasal + mastered_idioms
+    
     # Get recently added items
     recent_vocab = VocabularyWord.query.order_by(VocabularyWord.date_added.desc()).limit(5).all()
     recent_phrasal = PhrasalVerb.query.order_by(PhrasalVerb.date_added.desc()).limit(5).all()
@@ -126,6 +132,10 @@ def index():
                          vocab_count=vocab_count,
                          phrasal_count=phrasal_count,
                          idiom_count=idiom_count,
+                         mastered_vocab=mastered_vocab,
+                         mastered_phrasal=mastered_phrasal,
+                         mastered_idioms=mastered_idioms,
+                         total_mastered=total_mastered,
                          recent_vocab=recent_vocab,
                          recent_phrasal=recent_phrasal,
                          recent_idioms=recent_idioms)
@@ -765,6 +775,304 @@ def submit_test():
         'success': True,
         'message': 'Test completed successfully!',
         'result': test_result
+    })
+
+# Mastered Words Section
+@app.route('/mastered')
+def mastered_words():
+    """Show all mastered words (mastery_level = 5)"""
+    # Get mastered vocabulary words
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
+    
+    # Get mastered phrasal verbs
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
+    
+    # Get mastered idioms
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
+    
+    # Calculate statistics
+    total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
+    
+    stats = {
+        'vocabulary': len(mastered_vocab),
+        'phrasal_verbs': len(mastered_phrasal),
+        'idioms': len(mastered_idioms),
+        'total': total_mastered
+    }
+    
+    return render_template('mastered_words.html', 
+                         mastered_vocab=mastered_vocab,
+                         mastered_phrasal=mastered_phrasal,
+                         mastered_idioms=mastered_idioms,
+                         stats=stats)
+
+@app.route('/mastered/test')
+def mastered_test():
+    """Advanced test for mastered words"""
+    return render_template('mastered_test.html')
+
+@app.route('/submit-evaluation')
+def submit_evaluation():
+    """Page for submitting evaluation results from external system"""
+    return render_template('submit_evaluation.html')
+
+@app.route('/api/mastered-test-questions')
+def get_mastered_test_questions():
+    """Get sentence writing test questions for mastered words only"""
+    # Get all mastered items (no need for example sentences as users will create their own)
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
+    
+    all_sentence_questions = []
+    
+    # Add vocabulary sentence writing questions
+    for word in mastered_vocab:
+        all_sentence_questions.append({
+            'type': 'vocabulary',
+            'format': 'sentence_writing',
+            'id': word.id,
+            'word': word.word,
+            'definition': word.definition,
+            'part_of_speech': word.part_of_speech,
+            'pronunciation': word.pronunciation,
+            'example_sentence': word.example_sentence,
+            'difficulty_level': word.difficulty_level,
+            'category': 'vocabulary',
+            'question': f"Write a creative sentence using the word '{word.word}'",
+            'instructions': f"Create an original sentence that demonstrates your understanding of '{word.word}' (meaning: {word.definition})"
+        })
+    
+    # Add phrasal verb sentence writing questions
+    for phrasal in mastered_phrasal:
+        all_sentence_questions.append({
+            'type': 'phrasal_verb',
+            'format': 'sentence_writing',
+            'id': phrasal.id,
+            'word': phrasal.phrasal_verb,
+            'meaning': phrasal.meaning,
+            'separable': phrasal.separable,
+            'example_sentence': phrasal.example_sentence,
+            'difficulty_level': phrasal.difficulty_level,
+            'category': 'phrasal_verb',
+            'question': f"Write a creative sentence using the phrasal verb '{phrasal.phrasal_verb}'",
+            'instructions': f"Create an original sentence that demonstrates your understanding of '{phrasal.phrasal_verb}' (meaning: {phrasal.meaning}){' - Note: This is a separable phrasal verb' if phrasal.separable else ' - Note: This is an inseparable phrasal verb'}"
+        })
+    
+    # Add idiom sentence writing questions
+    for idiom in mastered_idioms:
+        all_sentence_questions.append({
+            'type': 'idiom',
+            'format': 'sentence_writing',
+            'id': idiom.id,
+            'word': idiom.idiom,
+            'meaning': idiom.meaning,
+            'origin': idiom.origin,
+            'example_sentence': idiom.example_sentence,
+            'difficulty_level': idiom.difficulty_level,
+            'category': 'idiom',
+            'question': f"Write a creative sentence using the idiom '{idiom.idiom}'",
+            'instructions': f"Create an original sentence that demonstrates your understanding of '{idiom.idiom}' (meaning: {idiom.meaning})"
+        })
+    
+    if not all_sentence_questions:
+        return jsonify({
+            'success': False,
+            'message': 'No mastered words found for testing. Master some words first!',
+            'questions': []
+        })
+    
+    # Shuffle and select questions dynamically based on available mastered words
+    random.shuffle(all_sentence_questions)
+    
+    # Select up to 10 questions for sentence writing (fewer than fill-in-blank as they take more time)
+    max_questions = min(10, len(all_sentence_questions))
+    selected_questions = all_sentence_questions[:max_questions]
+    
+    return jsonify({
+        'success': True,
+        'questions': selected_questions,
+        'total_questions': len(selected_questions),
+        'available_mastered': {
+            'vocabulary': len(mastered_vocab),
+            'phrasal_verbs': len(mastered_phrasal),
+            'idioms': len(mastered_idioms),
+            'total': len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
+        },
+        'test_format': 'sentence_writing',
+        'instructions': 'Write creative and original sentences using your mastered words to demonstrate true understanding.'
+    })
+
+@app.route('/api/submit-mastered-test', methods=['POST'])
+def submit_mastered_test():
+    """Handle mastered test submission and return JSON for external evaluation"""
+    data = request.get_json()
+    responses = data.get('responses', [])
+    
+    # Create a comprehensive test result JSON
+    test_result = {
+        'test_metadata': {
+            'test_date': datetime.utcnow().isoformat(),
+            'test_type': 'sentence_writing_mastery_test',
+            'total_questions': len(responses),
+            'user_id': 'anonymous',  # You can add user identification later
+            'test_version': '1.0'
+        },
+        'questions_and_responses': []
+    }
+    
+    # Process each response and add to result
+    for response in responses:
+        item_id = response.get('id')
+        item_type = response.get('type')
+        user_sentence = response.get('user_sentence', '')
+        
+        # Get the item details from database
+        # Get the item from database
+        item = None
+        if item_type == 'vocabulary':
+            item = db.session.get(VocabularyWord, item_id)
+        elif item_type == 'phrasal_verb':
+            item = db.session.get(PhrasalVerb, item_id)
+        elif item_type == 'idiom':
+            item = db.session.get(Idiom, item_id)
+        
+        if item:
+            # Get the target word based on item type
+            if item_type == 'vocabulary':
+                target_word = item.word
+                definition_or_meaning = item.definition
+            elif item_type == 'phrasal_verb':
+                target_word = item.phrasal_verb
+                definition_or_meaning = item.meaning
+            else:  # idiom
+                target_word = item.idiom
+                definition_or_meaning = item.meaning
+            
+            question_response = {
+                'question_id': item_id,
+                'word_type': item_type,
+                'target_word': target_word,
+                'user_sentence': user_sentence,
+                'word_details': {
+                    'definition_or_meaning': definition_or_meaning,
+                    'part_of_speech': getattr(item, 'part_of_speech', None),
+                    'difficulty_level': item.difficulty_level,
+                    'original_example': getattr(item, 'example_sentence', ''),
+                    'pronunciation': getattr(item, 'pronunciation', None),
+                    'separable': getattr(item, 'separable', None),  # For phrasal verbs
+                    'origin': getattr(item, 'origin', None)  # For idioms
+                },
+                'evaluation_criteria': {
+                    'word_used_correctly': None,  # To be filled by external evaluator
+                    'demonstrates_understanding': None,  # To be filled by external evaluator
+                    'grammar_correct': None,  # To be filled by external evaluator
+                    'creative_usage': None,  # To be filled by external evaluator
+                    'overall_score': None,  # To be filled by external evaluator (0-100)
+                    'evaluator_comments': ''  # To be filled by external evaluator
+                }
+            }
+            
+            test_result['questions_and_responses'].append(question_response)
+    
+    # Return the JSON structure for external evaluation
+    return jsonify({
+        'success': True,
+        'message': 'Test responses collected successfully. Use the test_result JSON for external evaluation.',
+        'test_result': test_result,
+        'download_filename': f'mastery_test_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.json',
+        'evaluation_instructions': {
+            'overview': 'Evaluate each sentence based on correct word usage, understanding demonstration, grammar, and creativity.',
+            'scoring_guide': {
+                'word_used_correctly': 'true/false - Is the target word used correctly in context?',
+                'demonstrates_understanding': 'true/false - Does the sentence show understanding of the word meaning?',
+                'grammar_correct': 'true/false - Is the sentence grammatically correct?',
+                'creative_usage': 'true/false - Is the usage creative and original?',
+                'overall_score': '0-100 - Overall quality of the sentence (0=poor, 100=excellent)',
+                'evaluator_comments': 'Optional feedback for the learner'
+            }
+        }
+    })
+
+@app.route('/api/submit-evaluation-results', methods=['POST'])
+def submit_evaluation_results():
+    """Submit evaluation results and update mastery levels based on external evaluation"""
+    data = request.get_json()
+    evaluated_results = data.get('evaluated_results', [])
+    
+    passed_items = []
+    failed_items = []
+    
+    # Process each evaluated response
+    for result in evaluated_results:
+        item_id = result.get('question_id')
+        item_type = result.get('word_type')
+        evaluation = result.get('evaluation_criteria', {})
+        
+        # Determine if the word should remain mastered based on evaluation
+        overall_score = evaluation.get('overall_score', 0)
+        word_used_correctly = evaluation.get('word_used_correctly', False)
+        demonstrates_understanding = evaluation.get('demonstrates_understanding', False)
+        
+        # Consider it passed if overall score >= 70 AND word is used correctly AND demonstrates understanding
+        passed = (overall_score >= 70 and word_used_correctly and demonstrates_understanding)
+        
+        # Get the item from database
+        item = None
+        if item_type == 'vocabulary':
+            item = db.session.get(VocabularyWord, item_id)
+        elif item_type == 'phrasal_verb':
+            item = db.session.get(PhrasalVerb, item_id)
+        elif item_type == 'idiom':
+            item = db.session.get(Idiom, item_id)
+        
+        if item:
+            # Get the text based on item type
+            if item_type == 'vocabulary':
+                item_text = item.word
+            elif item_type == 'phrasal_verb':
+                item_text = item.phrasal_verb
+            else:  # idiom
+                item_text = item.idiom
+            
+            if passed:
+                passed_items.append({
+                    'id': item.id,
+                    'type': item_type,
+                    'text': item_text,
+                    'score': overall_score
+                })
+            else:
+                # Reset mastery level to 0 and reset practice counter
+                item.mastery_level = 0
+                item.times_practiced = 0
+                item.last_practiced = datetime.utcnow()
+                
+                failed_items.append({
+                    'id': item.id,
+                    'type': item_type,
+                    'text': item_text,
+                    'score': overall_score
+                })
+    
+    # Commit changes to database
+    db.session.commit()
+    
+    # Calculate overall statistics
+    total_questions = len(evaluated_results)
+    passed_count = len(passed_items)
+    score_percentage = round((passed_count / total_questions * 100) if total_questions > 0 else 0)
+    
+    return jsonify({
+        'success': True,
+        'evaluation_complete': True,
+        'score_percentage': score_percentage,
+        'passed_count': passed_count,
+        'failed_count': len(failed_items),
+        'total_questions': total_questions,
+        'passed_items': passed_items,
+        'failed_items': failed_items,
+        'message': f'Evaluation completed! {passed_count}/{total_questions} words remain mastered. {len(failed_items)} words moved back to practice.'
     })
 
 if __name__ == '__main__':

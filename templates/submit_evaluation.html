@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Evaluation Results - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-clipboard-check text-success"></i> Submit Evaluation Results
+            </h1>
+            <a href="{{ url_for('mastered_words') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Mastered Words
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> How to Submit Evaluation Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <p><strong>After receiving evaluation results from external system:</strong></p>
+                <ol>
+                    <li>Copy the evaluation results JSON from your external evaluation system</li>
+                    <li>Paste it in the text area below</li>
+                    <li>Click "Submit Results" to update mastery levels</li>
+                    <li>Words with score ≥ 70 AND correct usage will remain mastered</li>
+                    <li>Failed words will be reset to practice mode with counter = 0</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON Input Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-code"></i> Evaluation Results JSON
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="evaluation-form">
+                    <div class="mb-4">
+                        <label for="evaluation-json" class="form-label">
+                            <strong>Paste Evaluation Results JSON:</strong>
+                        </label>
+                        <textarea class="form-control" id="evaluation-json" rows="15" 
+                                  placeholder='Paste your evaluation JSON here...
+
+Example format:
+{
+  "evaluated_results": [
+    {
+      "question_id": 123,
+      "word_type": "vocabulary",
+      "evaluation_criteria": {
+        "word_used_correctly": true,
+        "demonstrates_understanding": true,
+        "grammar_correct": true,
+        "creative_usage": true,
+        "overall_score": 85,
+        "evaluator_comments": "Excellent usage"
+      }
+    }
+  ]
+}'></textarea>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-lightbulb"></i> The JSON should contain the "evaluated_results" array with evaluation criteria for each question.
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="validateAndSubmit()">
+                            <i class="fas fa-check-circle"></i> Submit Evaluation Results
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" onclick="validateJSON()">
+                            <i class="fas fa-search"></i> Validate JSON
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary ms-2" onclick="clearForm()">
+                            <i class="fas fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="row d-none" id="results-section">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i> Evaluation Results
+                </h5>
+            </div>
+            <div class="card-body" id="results-container">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample JSON Section -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-code"></i> Sample JSON Format
+                </h5>
+            </div>
+            <div class="card-body">
+                <pre><code id="sample-json">{
+  "evaluated_results": [
+    {
+      "question_id": 123,
+      "word_type": "vocabulary",
+      "evaluation_criteria": {
+        "word_used_correctly": true,
+        "demonstrates_understanding": true,
+        "grammar_correct": false,
+        "creative_usage": true,
+        "overall_score": 75,
+        "evaluator_comments": "Good usage but minor grammar issue"
+      }
+    },
+    {
+      "question_id": 456,
+      "word_type": "phrasal_verb",
+      "evaluation_criteria": {
+        "word_used_correctly": false,
+        "demonstrates_understanding": false,
+        "grammar_correct": true,
+        "creative_usage": false,
+        "overall_score": 45,
+        "evaluator_comments": "Incorrect usage of phrasal verb"
+      }
+    }
+  ]
+}</code></pre>
+                <button class="btn btn-sm btn-outline-primary mt-2" onclick="copySampleJSON()">
+                    <i class="fas fa-copy"></i> Copy Sample
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateJSON() {
+    const jsonText = document.getElementById('evaluation-json').value.trim();
+    
+    if (!jsonText) {
+        alert('Please enter JSON data first.');
+        return false;
+    }
+    
+    try {
+        const parsed = JSON.parse(jsonText);
+        
+        // Basic validation
+        if (!parsed.evaluated_results || !Array.isArray(parsed.evaluated_results)) {
+            alert('Invalid JSON: Missing "evaluated_results" array.');
+            return false;
+        }
+        
+        if (parsed.evaluated_results.length === 0) {
+            alert('No evaluation results found in the JSON.');
+            return false;
+        }
+        
+        // Validate each result
+        for (let i = 0; i < parsed.evaluated_results.length; i++) {
+            const result = parsed.evaluated_results[i];
+            
+            if (!result.question_id || !result.word_type || !result.evaluation_criteria) {
+                alert(`Invalid result at index ${i}: Missing required fields.`);
+                return false;
+            }
+            
+            const criteria = result.evaluation_criteria;
+            if (typeof criteria.overall_score !== 'number' || criteria.overall_score < 0 || criteria.overall_score > 100) {
+                alert(`Invalid overall_score at index ${i}: Must be a number between 0-100.`);
+                return false;
+            }
+        }
+        
+        alert(`✅ JSON is valid! Found ${parsed.evaluated_results.length} evaluation results.`);
+        return true;
+        
+    } catch (error) {
+        alert(`❌ Invalid JSON: ${error.message}`);
+        return false;
+    }
+}
+
+function validateAndSubmit() {
+    if (!validateJSON()) {
+        return;
+    }
+    
+    const jsonText = document.getElementById('evaluation-json').value.trim();
+    const parsedData = JSON.parse(jsonText);
+    
+    // Show loading
+    const submitBtn = event.target;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    // Submit to API
+    fetch('/api/submit-evaluation-results', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(parsedData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResults(data);
+        } else {
+            alert('Error submitting evaluation results: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error submitting evaluation results. Please try again.');
+    })
+    .finally(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+function displayResults(data) {
+    document.getElementById('results-section').classList.remove('d-none');
+    const container = document.getElementById('results-container');
+    
+    let resultHTML = `
+        <div class="text-center mb-4">
+            <div class="display-6 mb-3">
+                <span class="badge ${data.score_percentage >= 80 ? 'bg-success' : data.score_percentage >= 60 ? 'bg-warning' : 'bg-danger'}">
+                    ${data.score_percentage}%
+                </span>
+            </div>
+            <h4>${data.passed_count} out of ${data.total_questions} words remain mastered</h4>
+            <p class="text-muted">${data.message}</p>
+        </div>
+        
+        <div class="row">
+    `;
+    
+    if (data.passed_items.length > 0) {
+        resultHTML += `
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-check-circle"></i> Words Remaining Mastered (${data.passed_items.length})
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+        `;
+        
+        data.passed_items.forEach(item => {
+            resultHTML += `
+                <li class="mb-2">
+                    <strong>${item.text}</strong> 
+                    <span class="badge bg-secondary">${item.type}</span>
+                    <span class="badge bg-success">Score: ${item.score}</span>
+                </li>
+            `;
+        });
+        
+        resultHTML += `
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.failed_items.length > 0) {
+        resultHTML += `
+            <div class="col-md-6">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0">
+                            <i class="fas fa-exclamation-triangle"></i> Words Reset to Practice (${data.failed_items.length})
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+        `;
+        
+        data.failed_items.forEach(item => {
+            resultHTML += `
+                <li class="mb-2">
+                    <strong>${item.text}</strong> 
+                    <span class="badge bg-secondary">${item.type}</span>
+                    <span class="badge bg-warning text-dark">Score: ${item.score}</span>
+                </li>
+            `;
+        });
+        
+        resultHTML += `
+                        </ul>
+                        <small class="text-muted mt-2 d-block">
+                            These words have been reset to mastery level 0 and practice counter 0.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    resultHTML += `
+        </div>
+        
+        <div class="text-center mt-4">
+            <a href="/mastered" class="btn btn-primary me-2">
+                <i class="fas fa-trophy"></i> View Updated Mastered Words
+            </a>
+            <a href="/progress" class="btn btn-success me-2">
+                <i class="fas fa-chart-line"></i> View Progress
+            </a>
+            <a href="/" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+        </div>
+    `;
+    
+    container.innerHTML = resultHTML;
+    
+    // Scroll to results
+    document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function clearForm() {
+    document.getElementById('evaluation-json').value = '';
+    document.getElementById('results-section').classList.add('d-none');
+}
+
+function copySampleJSON() {
+    const sampleJSON = document.getElementById('sample-json').textContent;
+    navigator.clipboard.writeText(sampleJSON).then(() => {
+        alert('Sample JSON copied to clipboard!');
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy sample JSON. Please copy manually.');
+    });
+}
+</script>
+
+<style>
+pre {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+}
+
+#evaluation-json {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.display-6 .badge {
+    font-size: 2rem;
+}
+</style>
+{% endblock %}

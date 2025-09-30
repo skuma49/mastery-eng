@@ -20,3 +20,35 @@ Areas for improvement.**
 
 
 Ensure the Excel file is well-formatted for readability (bold headers, adjusted column widths, proper alignment).
+
+
+
+Evaluate the following vocabulary test response and return the result in this JSON format:
+
+{
+  "evaluated_results": [
+    {
+      "question_id": <question_id>,
+      "word_type": "<word_type>",
+      "evaluation_criteria": {
+        "word_used_correctly": <true/false>,
+        "demonstrates_understanding": <true/false>,
+        "grammar_correct": <true/false>,
+        "creative_usage": <true/false>,
+        "overall_score": <numeric score out of 100>,
+        "evaluator_comments": "<constructive feedback and suggested improved sentence>"
+      }
+    }
+  ]
+}
+
+Scoring Rules:
+- `word_used_correctly`: true if the target word is used in the correct context.
+- `demonstrates_understanding`: true if the sentence shows understanding of the word’s meaning.
+- `grammar_correct`: true if the sentence is grammatically correct (minor errors allowed if meaning is clear).
+- `creative_usage`: true if the usage is creative or original beyond a basic sentence.
+- `overall_score`: numeric score out of 100 based on these criteria.
+- `evaluator_comments`: include feedback and an improved version of the sentence if needed.
+
+Here is the input JSON:
+{your test JSON here}

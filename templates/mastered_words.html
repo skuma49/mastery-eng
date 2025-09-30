@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Mastered Words - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-trophy text-warning"></i> Mastered Words
+            </h1>
+            <div>
+                {% if stats.total > 0 %}
+                <a href="{{ url_for('mastered_test') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-brain"></i> Advanced Test
+                </a>
+                <a href="{{ url_for('submit_evaluation') }}" class="btn btn-success me-2">
+                    <i class="fas fa-clipboard-check"></i> Submit Results
+                </a>
+                {% endif %}
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                <h3 class="text-primary">{{ stats.vocabulary }}</h3>
+                <small class="text-muted">Vocabulary Words</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <i class="fas fa-link fa-2x text-success mb-2"></i>
+                <h3 class="text-success">{{ stats.phrasal_verbs }}</h3>
+                <small class="text-muted">Phrasal Verbs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <i class="fas fa-lightbulb fa-2x text-info mb-2"></i>
+                <h3 class="text-info">{{ stats.idioms }}</h3>
+                <small class="text-muted">Idioms</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
+                <h3 class="text-warning">{{ stats.total }}</h3>
+                <small class="text-muted">Total Mastered</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if stats.total == 0 %}
+<!-- No mastered words message -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-graduation-cap fa-4x text-muted mb-3"></i>
+                <h3 class="text-muted">No Mastered Words Yet</h3>
+                <p class="text-muted mb-4">Start practicing to master your vocabulary, phrasal verbs, and idioms!</p>
+                <div>
+                    <a href="{{ url_for('flashcards', category='vocabulary') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-play"></i> Practice Vocabulary
+                    </a>
+                    <a href="{{ url_for('flashcards', category='phrasal-verbs') }}" class="btn btn-success me-2">
+                        <i class="fas fa-play"></i> Practice Phrasal Verbs
+                    </a>
+                    <a href="{{ url_for('flashcards', category='idioms') }}" class="btn btn-info">
+                        <i class="fas fa-play"></i> Practice Idioms
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+
+<!-- Mastered Vocabulary Words -->
+{% if mastered_vocab %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-book"></i> Mastered Vocabulary Words ({{ mastered_vocab|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for word in mastered_vocab %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-left-primary">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title text-primary mb-1">
+                                            {{ word.word }}
+                                            {% if word.pronunciation %}
+                                            <small class="text-muted">[{{ word.pronunciation }}]</small>
+                                            {% endif %}
+                                        </h6>
+                                        {% if word.part_of_speech %}
+                                        <span class="badge bg-secondary mb-2">{{ word.part_of_speech }}</span>
+                                        {% endif %}
+                                        <p class="card-text mb-2">{{ word.definition }}</p>
+                                        {% if word.example_sentence %}
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <em>"{{ word.example_sentence }}"</em>
+                                            </small>
+                                        </p>
+                                        {% endif %}
+                                        <small class="text-success">
+                                            <i class="fas fa-check-circle"></i> 
+                                            Practiced {{ word.times_practiced }} times
+                                        </small>
+                                    </div>
+                                    <div class="ms-2">
+                                        <div class="mastery-badge mastery-5">
+                                            <i class="fas fa-crown"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Mastered Phrasal Verbs -->
+{% if mastered_phrasal %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link"></i> Mastered Phrasal Verbs ({{ mastered_phrasal|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for phrasal in mastered_phrasal %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-left-success">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title text-success mb-1">
+                                            {{ phrasal.phrasal_verb }}
+                                            {% if phrasal.separable %}
+                                            <span class="badge bg-info">Separable</span>
+                                            {% else %}
+                                            <span class="badge bg-warning">Inseparable</span>
+                                            {% endif %}
+                                        </h6>
+                                        <p class="card-text mb-2">{{ phrasal.meaning }}</p>
+                                        {% if phrasal.example_sentence %}
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <em>"{{ phrasal.example_sentence }}"</em>
+                                            </small>
+                                        </p>
+                                        {% endif %}
+                                        <small class="text-success">
+                                            <i class="fas fa-check-circle"></i> 
+                                            Practiced {{ phrasal.times_practiced }} times
+                                        </small>
+                                    </div>
+                                    <div class="ms-2">
+                                        <div class="mastery-badge mastery-5">
+                                            <i class="fas fa-crown"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Mastered Idioms -->
+{% if mastered_idioms %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb"></i> Mastered Idioms ({{ mastered_idioms|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for idiom in mastered_idioms %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border-left-info">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="card-title text-info mb-1">{{ idiom.idiom }}</h6>
+                                        <p class="card-text mb-2">{{ idiom.meaning }}</p>
+                                        {% if idiom.example_sentence %}
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <em>"{{ idiom.example_sentence }}"</em>
+                                            </small>
+                                        </p>
+                                        {% endif %}
+                                        {% if idiom.origin %}
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                <strong>Origin:</strong> {{ idiom.origin }}
+                                            </small>
+                                        </p>
+                                        {% endif %}
+                                        <small class="text-success">
+                                            <i class="fas fa-check-circle"></i> 
+                                            Practiced {{ idiom.times_practiced }} times
+                                        </small>
+                                    </div>
+                                    <div class="ms-2">
+                                        <div class="mastery-badge mastery-5">
+                                            <i class="fas fa-crown"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Advanced Test Info -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-brain"></i> Advanced Testing
+                </h5>
+                <p class="card-text">
+                    Test your mastered words by <strong>writing creative, original sentences</strong> that demonstrate true understanding! 
+                    The test dynamically adapts to your current mastered words. Results are exported as JSON for external evaluation.
+                </p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-pen-fancy text-primary"></i> Creative sentence writing</li>
+                            <li><i class="fas fa-sync text-success"></i> Dynamic test generation</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-download text-info"></i> JSON export for evaluation</li>
+                            <li><i class="fas fa-brain text-warning"></i> Comprehensive word details</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-exclamation-triangle text-warning"></i> External evaluation determines mastery</li>
+                            <li><i class="fas fa-redo text-info"></i> Failed words reset to practice</li>
+                        </ul>
+                    </div>
+                </div>
+                {% if stats.total > 0 %}
+                <a href="{{ url_for('mastered_test') }}" class="btn btn-warning">
+                    <i class="fas fa-brain"></i> Take Advanced Test
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<style>
+.border-left-primary {
+    border-left: 4px solid #007bff !important;
+}
+
+.border-left-success {
+    border-left: 4px solid #28a745 !important;
+}
+
+.border-left-info {
+    border-left: 4px solid #17a2b8 !important;
+}
+
+.mastery-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+}
+
+.mastery-5 {
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    color: #333;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+</style>
+{% endblock %}

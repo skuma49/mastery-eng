@@ -67,6 +67,11 @@
                             <i class="fas fa-chart-line"></i> Progress
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('mastered_words') }}">
+                            <i class="fas fa-trophy text-warning"></i> Mastered
+                        </a>
+                    </li>
                 </ul>
                 <div class="d-flex">
                     <form class="d-flex" method="GET" action="{{ url_for('search') }}">

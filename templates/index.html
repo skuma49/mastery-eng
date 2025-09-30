@@ -90,20 +90,50 @@
     </div>
 </div>
 
-<!-- Mastery Progress Section -->
+<!-- Mastered Words Section -->
 <div class="row mb-4">
-    <div class="col-12">
-        <div class="card dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <div class="card-body text-center py-5">
+    <div class="col-md-8">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); color: white;">
+            <div class="card-body text-center py-4">
                 <div class="floating-element">
-                    <i class="fas fa-chart-line fa-4x mb-3"></i>
+                    <i class="fas fa-trophy fa-3x mb-3"></i>
                 </div>
-                <h3 class="card-title text-white mb-3">
-                    Track Your Mastery Progress
+                <h3 class="card-title text-white mb-2">
+                    Mastered Words: {{ total_mastered }}
                 </h3>
-                <p class="card-text text-white fs-5 mb-4">See which words need practice and celebrate your achievements</p>
-                <a href="{{ url_for('progress') }}" class="btn btn-light btn-lg pulse-primary">
-                    <i class="fas fa-trophy"></i> View Progress
+                <p class="card-text text-white mb-3">
+                    {% if total_mastered > 0 %}
+                    Vocabulary: {{ mastered_vocab }} • Phrasal Verbs: {{ mastered_phrasal }} • Idioms: {{ mastered_idioms }}
+                    {% else %}
+                    Keep practicing to master your first words!
+                    {% endif %}
+                </p>
+                <div>
+                    <a href="{{ url_for('mastered_words') }}" class="btn btn-light me-2">
+                        <i class="fas fa-crown"></i> View Mastered
+                    </a>
+                    {% if total_mastered > 0 %}
+                    <a href="{{ url_for('mastered_test') }}" class="btn btn-outline-light me-2">
+                        <i class="fas fa-brain"></i> Advanced Test
+                    </a>
+                    <a href="{{ url_for('submit_evaluation') }}" class="btn btn-outline-light">
+                        <i class="fas fa-clipboard-check"></i> Submit Results
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="card-body text-center py-4">
+                <div class="floating-element">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                </div>
+                <h5 class="card-title text-white mb-2">Progress Tracking</h5>
+                <p class="card-text text-white mb-3">View detailed mastery statistics</p>
+                <a href="{{ url_for('progress') }}" class="btn btn-light">
+                    <i class="fas fa-analytics"></i> View Progress
                 </a>
             </div>
         </div>
