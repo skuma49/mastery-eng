@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+
+{% block title %}10-Minute Test - Mastery English{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Test Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-clock"></i> 10-Minute Test</h1>
+                <div id="timer" class="badge bg-primary fs-4 px-3 py-2">
+                    <i class="fas fa-stopwatch"></i> 10:00
+                </div>
+            </div>
+            <p class="text-muted">Create sentences using the given words, phrasal verbs, and idioms. Show your mastery!</p>
+        </div>
+    </div>
+
+    <!-- Test States -->
+    <!-- Loading State -->
+    <div id="loading-state" class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h3>Preparing your test...</h3>
+        <p class="text-muted">Selecting questions based on your mastery level</p>
+    </div>
+
+    <!-- Pre-Test Instructions -->
+    <div id="pre-test" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-info-circle text-info mb-3" style="font-size: 3rem;"></i>
+                    <h2>Test Instructions</h2>
+                    <div class="text-start mt-4">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>You have <strong>10 minutes</strong> to complete the test</li>
+                            <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Create <strong>meaningful sentences</strong> using each given word/phrase</li>
+                            <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Questions include: <strong>40% idioms, 30% vocabulary, 30% phrasal verbs</strong></li>
+                            <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Only items you've mastered (level 2+) are included</li>
+                            <li class="list-group-item"><i class="fas fa-check text-success me-2"></i>Results will be downloadable as JSON after completion</li>
+                        </ul>
+                    </div>
+                    <button id="start-test" class="btn btn-primary btn-lg mt-4">
+                        <i class="fas fa-play"></i> Start Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Interface -->
+    <div id="test-interface" style="display: none;">
+        <!-- Progress Bar -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Progress</span>
+                    <span id="question-counter" class="text-muted">1 / 10</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 10%" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Card -->
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">
+                                <span id="question-type-badge" class="badge bg-info me-2">Vocabulary</span>
+                                Question <span id="current-question">1</span>
+                            </h4>
+                            <div id="timer-small" class="badge bg-warning">
+                                <i class="fas fa-clock"></i> 10:00
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Word/Phrase Display -->
+                        <div class="text-center mb-4">
+                            <h2 id="question-text" class="text-primary">Loading...</h2>
+                            <div id="question-example" class="alert alert-light mt-3" style="display: none;">
+                                <small class="text-muted">Example: </small>
+                                <em id="example-text"></em>
+                            </div>
+                        </div>
+
+                        <!-- Answer Input -->
+                        <div class="mb-4">
+                            <label for="sentence-input" class="form-label">
+                                <strong>Create a sentence using "<span id="word-highlight"></span>":</strong>
+                            </label>
+                            <textarea id="sentence-input" 
+                                    class="form-control form-control-lg" 
+                                    rows="3" 
+                                    placeholder="Type your sentence here..."
+                                    style="font-size: 1.1rem;"></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb text-warning"></i> 
+                                Make sure your sentence clearly demonstrates the meaning of the word/phrase.
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <button id="prev-btn" class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                            <div>
+                                <button id="next-btn" class="btn btn-primary">
+                                    Next <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <button id="finish-btn" class="btn btn-success" style="display: none;">
+                                    <i class="fas fa-check"></i> Finish Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Completion -->
+    <div id="test-complete" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-trophy text-warning mb-3" style="font-size: 4rem;"></i>
+                    <h2>Test Completed!</h2>
+                    <p class="text-muted fs-5">Great job! You've completed the 10-minute test.</p>
+                    <div id="test-summary" class="mt-4 mb-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 id="total-answered" class="text-primary">0</h3>
+                                        <small class="text-muted">Questions Answered</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 id="time-taken" class="text-success">0:00</h3>
+                                        <small class="text-muted">Time Taken</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-info">JSON</h3>
+                                        <small class="text-muted">Format</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button id="download-btn" class="btn btn-success btn-lg">
+                            <i class="fas fa-download"></i> Download Results
+                        </button>
+                        <a href="{{ url_for('test') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-redo"></i> Take Another Test
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class TestManager {
+    constructor() {
+        this.questions = [];
+        this.currentQuestionIndex = 0;
+        this.responses = [];
+        this.timer = null;
+        this.timeRemaining = 600; // 10 minutes in seconds
+        this.startTime = null;
+        this.isTransitioning = false; // Flag to prevent auto-save during transitions
+        
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.loadQuestions();
+    }
+    
+    bindEvents() {
+        document.getElementById('start-test').addEventListener('click', () => this.startTest());
+        document.getElementById('next-btn').addEventListener('click', () => this.nextQuestion());
+        document.getElementById('prev-btn').addEventListener('click', () => this.prevQuestion());
+        document.getElementById('finish-btn').addEventListener('click', () => this.finishTest());
+        document.getElementById('download-btn').addEventListener('click', () => this.downloadResults());
+        
+        // Auto-save responses
+        document.getElementById('sentence-input').addEventListener('input', (e) => {
+            this.saveCurrentResponse();
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) return;
+            
+            if (e.key === 'ArrowRight' && !document.getElementById('next-btn').disabled) {
+                this.nextQuestion();
+            } else if (e.key === 'ArrowLeft' && !document.getElementById('prev-btn').disabled) {
+                this.prevQuestion();
+            }
+        });
+    }
+    
+    async loadQuestions() {
+        try {
+            const response = await fetch('/api/generate-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.questions = data.questions;
+                this.responses = new Array(this.questions.length).fill('');
+                
+                if (this.questions.length === 0) {
+                    this.showNoQuestionsMessage();
+                } else {
+                    this.showPreTest();
+                }
+            } else {
+                this.showError('Failed to load test questions');
+            }
+        } catch (error) {
+            this.showError('Network error while loading test');
+        }
+    }
+    
+    showNoQuestionsMessage() {
+        document.getElementById('loading-state').innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle text-warning mb-3" style="font-size: 3rem;"></i>
+                <h3>No Questions Available</h3>
+                <p class="text-muted">You need items with mastery level 2 or higher to take the test.</p>
+                <p class="text-muted">Practice more with flashcards to improve your mastery levels!</p>
+                <a href="{{ url_for('flashcards_menu') }}" class="btn btn-primary">
+                    <i class="fas fa-cards-blank"></i> Practice Flashcards
+                </a>
+            </div>
+        `;
+    }
+    
+    showPreTest() {
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('pre-test').style.display = 'block';
+    }
+    
+    startTest() {
+        this.startTime = new Date();
+        this.currentQuestionIndex = 0;
+        
+        // Ensure responses array is properly initialized
+        this.responses = new Array(this.questions.length).fill('');
+        
+        document.getElementById('pre-test').style.display = 'none';
+        document.getElementById('test-interface').style.display = 'block';
+        
+        this.startTimer();
+        this.displayQuestion();
+    }
+    
+    startTimer() {
+        this.timer = setInterval(() => {
+            this.timeRemaining--;
+            this.updateTimerDisplay();
+            
+            if (this.timeRemaining <= 0) {
+                this.finishTest();
+            }
+        }, 1000);
+    }
+    
+    updateTimerDisplay() {
+        const minutes = Math.floor(this.timeRemaining / 60);
+        const seconds = this.timeRemaining % 60;
+        const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        document.getElementById('timer').innerHTML = `<i class="fas fa-stopwatch"></i> ${timeStr}`;
+        document.getElementById('timer-small').innerHTML = `<i class="fas fa-clock"></i> ${timeStr}`;
+        
+        // Change color based on time remaining
+        const timerElements = [document.getElementById('timer'), document.getElementById('timer-small')];
+        timerElements.forEach(el => {
+            el.className = el.className.replace(/bg-(primary|warning|danger)/, '');
+            if (this.timeRemaining > 300) { // > 5 minutes
+                el.classList.add('bg-primary');
+            } else if (this.timeRemaining > 60) { // > 1 minute
+                el.classList.add('bg-warning');
+            } else {
+                el.classList.add('bg-danger');
+            }
+        });
+    }
+    
+    displayQuestion() {
+        this.isTransitioning = true; // Start transition
+        
+        const question = this.questions[this.currentQuestionIndex];
+        
+        // Safety check - make sure all elements exist
+        const elements = {
+            'current-question': document.getElementById('current-question'),
+            'question-counter': document.getElementById('question-counter'),
+            'progress-bar': document.getElementById('progress-bar'),
+            'question-type-badge': document.getElementById('question-type-badge'),
+            'question-text': document.getElementById('question-text'),
+            'word-highlight': document.getElementById('word-highlight')
+        };
+        
+        // Check if any element is missing
+        for (const [id, element] of Object.entries(elements)) {
+            if (!element) {
+                console.error(`Element with id '${id}' not found`);
+                return;
+            }
+        }
+        
+        // Update question info
+        elements['current-question'].textContent = this.currentQuestionIndex + 1;
+        elements['question-counter'].textContent = `${this.currentQuestionIndex + 1} / ${this.questions.length}`;
+        
+        // Update progress bar
+        const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+        elements['progress-bar'].style.width = `${progress}%`;
+        elements['progress-bar'].setAttribute('aria-valuenow', progress);
+        
+        // Update question type badge
+        const badge = elements['question-type-badge'];
+        badge.textContent = question.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        badge.className = 'badge me-2 ' + this.getTypeColor(question.type);
+        
+        // Update question content
+        elements['question-text'].textContent = question.text;
+        elements['word-highlight'].textContent = question.text;
+        
+        // Show example if available (with safety check)
+        const exampleText = document.getElementById('example-text');
+        const questionExample = document.getElementById('question-example');
+        
+        if (exampleText && questionExample) {
+            if (question.example) {
+                exampleText.textContent = question.example;
+                questionExample.style.display = 'block';
+            } else {
+                questionExample.style.display = 'none';
+            }
+        }
+        
+        // Clear and load saved response with proper timing
+        const textarea = document.getElementById('sentence-input');
+        if (!textarea) {
+            console.error('Textarea element not found');
+            return;
+        }
+        
+        // Debug logging
+        console.log('Current question index:', this.currentQuestionIndex);
+        console.log('Responses array:', this.responses);
+        console.log('Response for current question:', this.responses[this.currentQuestionIndex]);
+        
+        // Force clear with a slight delay to prevent carryover
+        setTimeout(() => {
+            textarea.value = '';
+            const savedResponse = this.responses[this.currentQuestionIndex] || '';
+            textarea.value = savedResponse;
+            console.log('Set textarea value to:', savedResponse);
+        }, 50);
+        
+        // Update navigation buttons
+        document.getElementById('prev-btn').disabled = this.currentQuestionIndex === 0;
+        
+        const isLastQuestion = this.currentQuestionIndex === this.questions.length - 1;
+        document.getElementById('next-btn').style.display = isLastQuestion ? 'none' : 'inline-block';
+        document.getElementById('finish-btn').style.display = isLastQuestion ? 'inline-block' : 'none';
+        
+        // Focus on textarea and end transition
+        setTimeout(() => {
+            document.getElementById('sentence-input').focus();
+            this.isTransitioning = false; // End transition
+        }, 100);
+    }
+    
+    getTypeColor(type) {
+        switch (type) {
+            case 'vocabulary': return 'bg-primary';
+            case 'phrasal_verb': return 'bg-info';
+            case 'idiom': return 'bg-warning';
+            default: return 'bg-secondary';
+        }
+    }
+    
+    saveCurrentResponse() {
+        if (this.isTransitioning) {
+            console.log('Skipping save during transition');
+            return;
+        }
+        const response = document.getElementById('sentence-input').value;
+        console.log('Saving response for question', this.currentQuestionIndex, ':', response);
+        this.responses[this.currentQuestionIndex] = response;
+    }
+    
+    nextQuestion() {
+        console.log('=== NEXT QUESTION CLICKED ===');
+        console.log('Current index before save:', this.currentQuestionIndex);
+        
+        this.saveCurrentResponse();
+        
+        if (this.currentQuestionIndex < this.questions.length - 1) {
+            this.currentQuestionIndex++;
+            console.log('Moving to question index:', this.currentQuestionIndex);
+            console.log('Responses after save:', this.responses);
+            
+            // Force clear textarea immediately
+            const textarea = document.getElementById('sentence-input');
+            if (textarea) {
+                textarea.value = '';
+                textarea.blur(); // Remove focus
+            }
+            
+            this.displayQuestion();
+        }
+    }
+    
+    prevQuestion() {
+        console.log('=== PREV QUESTION CLICKED ===');
+        this.saveCurrentResponse();
+        
+        if (this.currentQuestionIndex > 0) {
+            this.currentQuestionIndex--;
+            console.log('Moving to question index:', this.currentQuestionIndex);
+            
+            // Force clear textarea immediately
+            const textarea = document.getElementById('sentence-input');
+            if (textarea) {
+                textarea.value = '';
+                textarea.blur(); // Remove focus
+            }
+            
+            this.displayQuestion();
+        }
+    }
+    
+    async finishTest() {
+        this.saveCurrentResponse();
+        clearInterval(this.timer);
+        
+        const endTime = new Date();
+        const timeTaken = Math.floor((endTime - this.startTime) / 1000);
+        
+        // Prepare test results
+        const testData = [];
+        for (let i = 0; i < this.questions.length; i++) {
+            const question = this.questions[i];
+            testData.push({
+                question_number: i + 1,
+                type: question.type,
+                word_or_phrase: question.text,
+                meaning: question.meaning,
+                user_sentence: this.responses[i] || '',
+                example_sentence: question.example || ''
+            });
+        }
+        
+        try {
+            const response = await fetch('/api/submit-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ responses: testData })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.testResult = result.result;
+                this.showTestComplete(timeTaken);
+            }
+        } catch (error) {
+            console.error('Error submitting test:', error);
+            this.showTestComplete(timeTaken);
+        }
+    }
+    
+    showTestComplete(timeTaken) {
+        document.getElementById('test-interface').style.display = 'none';
+        document.getElementById('test-complete').style.display = 'block';
+        
+        // Update summary
+        const answeredCount = this.responses.filter(r => r.trim().length > 0).length;
+        document.getElementById('total-answered').textContent = answeredCount;
+        
+        const minutes = Math.floor(timeTaken / 60);
+        const seconds = timeTaken % 60;
+        document.getElementById('time-taken').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    downloadResults() {
+        const results = this.testResult || {
+            test_date: new Date().toISOString(),
+            duration_minutes: 10,
+            total_questions: this.questions.length,
+            responses: this.questions.map((q, i) => ({
+                question_number: i + 1,
+                type: q.type,
+                word_or_phrase: q.text,
+                meaning: q.meaning,
+                user_sentence: this.responses[i] || '',
+                example_sentence: q.example || ''
+            }))
+        };
+        
+        const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mastery-english-test-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // Show success message
+        const btn = document.getElementById('download-btn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-success');
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            btn.disabled = false;
+        }, 2000);
+    }
+    
+    showError(message) {
+        document.getElementById('loading-state').innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle text-danger mb-3" style="font-size: 3rem;"></i>
+                <h3>Error</h3>
+                <p class="text-muted">${message}</p>
+                <button onclick="location.reload()" class="btn btn-primary">
+                    <i class="fas fa-redo"></i> Try Again
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Initialize test when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new TestManager();
+});
+</script>
+{% endblock %}

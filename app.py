@@ -647,6 +647,126 @@ def progress():
                          idiom_stats=idiom_stats,
                          overall_stats=overall_stats)
 
+@app.route('/test')
+def test():
+    """10-minute test with sentence creation"""
+    return render_template('test.html')
+
+@app.route('/api/generate-test', methods=['POST'])
+def generate_test():
+    """Generate test questions based on mastery level >= 2"""
+    # Get items with mastery level >= 2
+    vocab_items = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 2).all()
+    phrasal_items = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 2).all()
+    idiom_items = Idiom.query.filter(Idiom.mastery_level >= 2).all()
+    
+    # Calculate question counts based on available items (target: 10 questions for 10-minute test)
+    target_questions = 10
+    total_available = len(vocab_items) + len(phrasal_items) + len(idiom_items)
+    
+    if total_available == 0:
+        return jsonify({
+            'success': False,
+            'message': 'No items with mastery level 2 or higher found'
+        })
+    
+    # Use all available items if less than target, otherwise use proportional distribution
+    actual_total = min(target_questions, total_available)
+    
+    # Calculate proportional counts based on available items
+    idiom_count = min(len(idiom_items), max(1, int(actual_total * 0.4)) if len(idiom_items) > 0 else 0)
+    vocab_count = min(len(vocab_items), max(1, int(actual_total * 0.3)) if len(vocab_items) > 0 else 0)
+    
+    # Remaining questions go to phrasal verbs, but don't exceed available
+    remaining = actual_total - idiom_count - vocab_count
+    phrasal_count = min(len(phrasal_items), max(0, remaining))
+    
+    # Adjust if we still have too few questions
+    total_selected = idiom_count + vocab_count + phrasal_count
+    if total_selected < actual_total:
+        # Distribute remaining questions to categories that have more items available
+        remaining_to_distribute = actual_total - total_selected
+        if len(idiom_items) > idiom_count:
+            additional_idioms = min(remaining_to_distribute, len(idiom_items) - idiom_count)
+            idiom_count += additional_idioms
+            remaining_to_distribute -= additional_idioms
+        if remaining_to_distribute > 0 and len(vocab_items) > vocab_count:
+            additional_vocab = min(remaining_to_distribute, len(vocab_items) - vocab_count)
+            vocab_count += additional_vocab
+            remaining_to_distribute -= additional_vocab
+        if remaining_to_distribute > 0 and len(phrasal_items) > phrasal_count:
+            phrasal_count += min(remaining_to_distribute, len(phrasal_items) - phrasal_count)
+    
+    # Select random items
+    selected_questions = []
+    
+    # Select idioms
+    if idiom_count > 0:
+        selected_idioms = random.sample(idiom_items, idiom_count)
+        for item in selected_idioms:
+            selected_questions.append({
+                'type': 'idiom',
+                'id': item.id,
+                'text': item.idiom,
+                'meaning': item.meaning,
+                'example': item.example_sentence
+            })
+    
+    # Select vocabulary
+    if vocab_count > 0:
+        selected_vocab = random.sample(vocab_items, vocab_count)
+        for item in selected_vocab:
+            selected_questions.append({
+                'type': 'vocabulary',
+                'id': item.id,
+                'text': item.word,
+                'meaning': item.definition,
+                'example': item.example_sentence
+            })
+    
+    # Select phrasal verbs
+    if phrasal_count > 0:
+        selected_phrasal = random.sample(phrasal_items, phrasal_count)
+        for item in selected_phrasal:
+            selected_questions.append({
+                'type': 'phrasal_verb',
+                'id': item.id,
+                'text': item.phrasal_verb,
+                'meaning': item.meaning,
+                'example': item.example_sentence,
+                'separable': item.separable
+            })
+    
+    # Shuffle questions
+    random.shuffle(selected_questions)
+    
+    return jsonify({
+        'success': True,
+        'questions': selected_questions,
+        'total_questions': len(selected_questions),
+        'duration_minutes': 10
+    })
+
+@app.route('/api/submit-test', methods=['POST'])
+def submit_test():
+    """Handle test submission and generate downloadable JSON"""
+    data = request.json
+    responses = data.get('responses', [])
+    
+    # Create result JSON with timestamp
+    test_result = {
+        'test_date': datetime.utcnow().isoformat(),
+        'duration_minutes': 10,
+        'total_questions': len(responses),
+        'responses': responses
+    }
+    
+    return jsonify({
+        'success': True,
+        'message': 'Test completed successfully!',
+        'result': test_result
+    })
+
 if __name__ == '__main__':
     # Try different ports if default is busy, but only on first run
     import os

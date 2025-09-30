@@ -3,3 +3,20 @@ Give me meaning of below word given in <<< >>> along with example sentence, Pron
 Give me meaning of below phrasal verb given in <<< >>> along with example sentence, exact phrasal verb, difficulty level and whether it is seperable or not in tabular format , . <<< tone it down >>>
 
 Give me meaning of below idiom given in <<< >>> along with example sentence, exact idiom, difficulty level and origin in tabular format , . <<< all eggs in one basket >>>
+
+I have a JSON file with vocabulary and idiom test responses. I want you to:
+
+Evaluate each question and assign a score out of 10 based on correctness and relevance.
+Provide detailed feedback for each question explaining why the score was given and how to improve.
+Calculate the overall score out of 10.
+Generate a professional report in Excel format with the following columns: Question #, Word/Phrase, User Answer, Score, and Feedback.
+Add a summary sheet in the same Excel file showing:
+
+Test details (date, duration, total questions)
+Overall score
+Strengths
+Areas for improvement.**
+
+
+
+Ensure the Excel file is well-formatted for readability (bold headers, adjusted column widths, proper alignment).
