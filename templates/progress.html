@@ -110,9 +110,33 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row" id="vocab-items">
                     {% for item in vocab_data[:12] %}
-                    <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="col-md-6 col-lg-3 mb-3 vocab-item">
+                        <div class="card border-primary">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Hidden items - shown when "Show All" is clicked -->
+                    {% for item in vocab_data[12:] %}
+                    <div class="col-md-6 col-lg-3 mb-3 vocab-item vocab-hidden" style="display: none;">
                         <div class="card border-primary">
                             <div class="card-body p-3">
                                 <h6 class="card-title">{{ item.word }}</h6>
@@ -136,7 +160,9 @@
                 </div>
                 {% if vocab_data|length > 12 %}
                 <div class="text-center">
-                    <small class="text-muted">Showing first 12 of {{ vocab_data|length }} vocabulary words</small>
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleVocabView()" id="vocab-toggle-btn">
+                        <i class="fas fa-eye"></i> Show All {{ vocab_data|length }} Vocabulary Words
+                    </button>
                 </div>
                 {% endif %}
             </div>
@@ -173,9 +199,36 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row" id="phrasal-items">
                     {% for item in phrasal_data[:12] %}
-                    <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="col-md-6 col-lg-3 mb-3 phrasal-item">
+                        <div class="card border-info">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                {% if item.separable is defined %}
+                                    <span class="badge badge-sm bg-secondary mb-1">{{ 'Separable' if item.separable else 'Inseparable' }}</span>
+                                {% endif %}
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Hidden items - shown when "Show All" is clicked -->
+                    {% for item in phrasal_data[12:] %}
+                    <div class="col-md-6 col-lg-3 mb-3 phrasal-item phrasal-hidden" style="display: none;">
                         <div class="card border-info">
                             <div class="card-body p-3">
                                 <h6 class="card-title">{{ item.word }}</h6>
@@ -202,7 +255,9 @@
                 </div>
                 {% if phrasal_data|length > 12 %}
                 <div class="text-center">
-                    <small class="text-muted">Showing first 12 of {{ phrasal_data|length }} phrasal verbs</small>
+                    <button class="btn btn-outline-info btn-sm" onclick="togglePhrasalView()" id="phrasal-toggle-btn">
+                        <i class="fas fa-eye"></i> Show All {{ phrasal_data|length }} Phrasal Verbs
+                    </button>
                 </div>
                 {% endif %}
             </div>
@@ -239,9 +294,33 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row" id="idiom-items">
                     {% for item in idiom_data[:12] %}
-                    <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="col-md-6 col-lg-3 mb-3 idiom-item">
+                        <div class="card border-warning">
+                            <div class="card-body p-3">
+                                <h6 class="card-title">{{ item.word }}</h6>
+                                <p class="card-text small text-muted">{{ item.meaning[:40] }}{% if item.meaning|length > 40 %}...{% endif %}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="mastery-stars">
+                                        {% for i in range(5) %}
+                                            {% if i < item.mastery_level %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <small class="text-muted">{{ item.times_practiced }}x</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <!-- Hidden items - shown when "Show All" is clicked -->
+                    {% for item in idiom_data[12:] %}
+                    <div class="col-md-6 col-lg-3 mb-3 idiom-item idiom-hidden" style="display: none;">
                         <div class="card border-warning">
                             <div class="card-body p-3">
                                 <h6 class="card-title">{{ item.word }}</h6>
@@ -265,7 +344,9 @@
                 </div>
                 {% if idiom_data|length > 12 %}
                 <div class="text-center">
-                    <small class="text-muted">Showing first 12 of {{ idiom_data|length }} idioms</small>
+                    <button class="btn btn-outline-warning btn-sm" onclick="toggleIdiomView()" id="idiom-toggle-btn">
+                        <i class="fas fa-eye"></i> Show All {{ idiom_data|length }} Idioms
+                    </button>
                 </div>
                 {% endif %}
             </div>
@@ -315,4 +396,65 @@
     font-weight: 500;
 }
 </style>
+
+<script>
+// Toggle functions for showing/hiding all items
+function toggleVocabView() {
+    const hiddenItems = document.querySelectorAll('.vocab-hidden');
+    const toggleBtn = document.getElementById('vocab-toggle-btn');
+    const icon = toggleBtn.querySelector('i');
+    
+    if (hiddenItems[0].style.display === 'none') {
+        // Show all items
+        hiddenItems.forEach(item => item.style.display = 'block');
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Show Less';
+        toggleBtn.classList.remove('btn-outline-primary');
+        toggleBtn.classList.add('btn-primary');
+    } else {
+        // Hide items
+        hiddenItems.forEach(item => item.style.display = 'none');
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Show All {{ vocab_data|length }} Vocabulary Words';
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-outline-primary');
+    }
+}
+
+function togglePhrasalView() {
+    const hiddenItems = document.querySelectorAll('.phrasal-hidden');
+    const toggleBtn = document.getElementById('phrasal-toggle-btn');
+    
+    if (hiddenItems[0].style.display === 'none') {
+        // Show all items
+        hiddenItems.forEach(item => item.style.display = 'block');
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Show Less';
+        toggleBtn.classList.remove('btn-outline-info');
+        toggleBtn.classList.add('btn-info');
+    } else {
+        // Hide items
+        hiddenItems.forEach(item => item.style.display = 'none');
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Show All {{ phrasal_data|length }} Phrasal Verbs';
+        toggleBtn.classList.remove('btn-info');
+        toggleBtn.classList.add('btn-outline-info');
+    }
+}
+
+function toggleIdiomView() {
+    const hiddenItems = document.querySelectorAll('.idiom-hidden');
+    const toggleBtn = document.getElementById('idiom-toggle-btn');
+    
+    if (hiddenItems[0].style.display === 'none') {
+        // Show all items
+        hiddenItems.forEach(item => item.style.display = 'block');
+        toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Show Less';
+        toggleBtn.classList.remove('btn-outline-warning');
+        toggleBtn.classList.add('btn-warning');
+    } else {
+        // Hide items
+        hiddenItems.forEach(item => item.style.display = 'none');
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> Show All {{ idiom_data|length }} Idioms';
+        toggleBtn.classList.remove('btn-warning');
+        toggleBtn.classList.add('btn-outline-warning');
+    }
+}
+</script>
 {% endblock %}
