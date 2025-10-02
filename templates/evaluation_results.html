@@ -1,0 +1,644 @@
+{% extends "base.html" %}
+
+{% block title %}Test Results Evaluation - Mastery English{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-chart-bar"></i> Test Results Evaluation</h1>
+                <a href="{{ url_for('test') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Test
+                </a>
+            </div>
+            <p class="text-muted">Upload and analyze your 10-minute test evaluation results</p>
+        </div>
+    </div>
+
+    <!-- File Upload Section -->
+    <div id="upload-section" class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-file-upload text-primary mb-3" style="font-size: 3rem;"></i>
+                    <h3>Upload Evaluation Results</h3>
+                    <p class="text-muted">Select your evaluation JSON file to view detailed results</p>
+                    
+                    <form id="upload-form" enctype="multipart/form-data" class="mt-4">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" id="json-file" accept=".json" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-upload"></i> Process Results
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="text-center py-5" style="display: none;">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Processing...</span>
+        </div>
+        <h3>Processing your results...</h3>
+        <p class="text-muted">Analyzing evaluation data</p>
+    </div>
+
+    <!-- Results Display Section -->
+    <div id="results-section" style="display: none;">
+        <!-- Summary Cards -->
+        <div class="row mb-4" id="summary-cards">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h2 id="overall-score" class="display-4">-</h2>
+                        <p class="mb-0">Overall Score</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h2 id="total-questions" class="display-4">-</h2>
+                        <p class="mb-0">Total Questions</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h2 id="duration" class="display-4">-</h2>
+                        <p class="mb-0">Duration (min)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h2 id="test-date" class="h5">-</h2>
+                        <p class="mb-0">Test Date</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strengths and Areas for Improvement -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-check-circle"></i> Strengths</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul id="strengths-list" class="list-unstyled">
+                            <!-- Strengths will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header bg-warning text-white">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Areas for Improvement</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul id="improvement-list" class="list-unstyled">
+                            <!-- Areas for improvement will be populated here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Results Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-table"></i> Detailed Evaluation Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="results-table" class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Question #</th>
+                                        <th>Type</th>
+                                        <th>Word/Phrase</th>
+                                        <th>User Answer</th>
+                                        <th>Score</th>
+                                        <th>Feedback</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-tbody">
+                                    <!-- Results will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Mastery Level Settings -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card border-info">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><i class="fas fa-cogs"></i> Mastery Level Settings</h6>
+                                        <div class="mb-3">
+                                            <label for="score-threshold" class="form-label">Score Threshold for Mastery Increase</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="score-threshold" value="8" min="1" max="10">
+                                                <span class="input-group-text">/10</span>
+                                            </div>
+                                            <small class="form-text text-muted">Items scoring at or above this threshold will have their mastery level increased by 1.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-warning">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><i class="fas fa-info-circle"></i> How It Works</h6>
+                                        <ul class="small mb-0">
+                                            <li>High-scoring items get promoted to the next mastery level</li>
+                                            <li>Practice count and last practiced date are updated</li>
+                                            <li>Changes are saved to your vocabulary database</li>
+                                            <li>You'll see a detailed report of all updates</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Process Test Results Button -->
+                        <div class="text-center mt-4">
+                            <button id="process-results-btn" class="btn btn-success btn-lg">
+                                <i class="fas fa-cogs"></i> Process Test Results & Update Mastery Levels
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Results Section -->
+        <div id="processing-results" class="row mt-4" style="display: none;">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-analytics"></i> Analysis Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="analysis-content">
+                            <!-- Analysis results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class EvaluationResultsManager {
+    constructor() {
+        this.evaluationData = null;
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+    }
+    
+    bindEvents() {
+        const uploadForm = document.getElementById('upload-form');
+        const processBtn = document.getElementById('process-results-btn');
+        
+        uploadForm.addEventListener('submit', (e) => this.handleFileUpload(e));
+        processBtn.addEventListener('click', () => this.processResults());
+    }
+    
+    async handleFileUpload(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('json-file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Please select a JSON file');
+            return;
+        }
+        
+        if (!file.name.toLowerCase().endsWith('.json')) {
+            alert('Please select a valid JSON file');
+            return;
+        }
+        
+        this.showLoading();
+        
+        try {
+            const text = await this.readFileAsText(file);
+            const data = JSON.parse(text);
+            
+            // Validate the JSON structure
+            if (!this.validateEvaluationData(data)) {
+                throw new Error('Invalid evaluation file format');
+            }
+            
+            this.evaluationData = data;
+            this.displayResults();
+            
+        } catch (error) {
+            console.error('Error processing file:', error);
+            alert('Error processing file: ' + error.message);
+            this.hideLoading();
+        }
+    }
+    
+    readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+    
+    validateEvaluationData(data) {
+        return data.Summary && 
+               data['Detailed Evaluation'] && 
+               Array.isArray(data['Detailed Evaluation']) &&
+               data.Summary['Overall Score'] !== undefined;
+    }
+    
+    showLoading() {
+        document.getElementById('upload-section').style.display = 'none';
+        document.getElementById('loading-state').style.display = 'block';
+        document.getElementById('results-section').style.display = 'none';
+    }
+    
+    hideLoading() {
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('upload-section').style.display = 'block';
+    }
+    
+    displayResults() {
+        const summary = this.evaluationData.Summary;
+        const details = this.evaluationData['Detailed Evaluation'];
+        
+        // Update summary cards
+        document.getElementById('overall-score').textContent = summary['Overall Score'];
+        document.getElementById('total-questions').textContent = summary['Total Questions'];
+        document.getElementById('duration').textContent = summary['Duration (minutes)'];
+        
+        const testDate = new Date(summary['Test Date']);
+        document.getElementById('test-date').textContent = testDate.toLocaleDateString();
+        
+        // Update strengths
+        const strengthsList = document.getElementById('strengths-list');
+        strengthsList.innerHTML = '';
+        if (summary.Strengths && summary.Strengths.length > 0) {
+            summary.Strengths.forEach(strength => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="fas fa-check text-success me-2"></i>${strength}`;
+                li.className = 'mb-1';
+                strengthsList.appendChild(li);
+            });
+        } else {
+            strengthsList.innerHTML = '<li class="text-muted">No specific strengths identified</li>';
+        }
+        
+        // Update areas for improvement
+        const improvementsList = document.getElementById('improvement-list');
+        improvementsList.innerHTML = '';
+        if (summary['Areas for Improvement'] && summary['Areas for Improvement'].length > 0) {
+            summary['Areas for Improvement'].forEach(area => {
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="fas fa-exclamation text-warning me-2"></i>${area}`;
+                li.className = 'mb-1';
+                improvementsList.appendChild(li);
+            });
+        } else {
+            improvementsList.innerHTML = '<li class="text-muted">No specific areas for improvement identified</li>';
+        }
+        
+        // Populate detailed results table
+        const tbody = document.getElementById('results-tbody');
+        tbody.innerHTML = '';
+        
+        details.forEach(item => {
+            const row = document.createElement('tr');
+            
+            // Determine score color
+            let scoreClass = 'text-danger';
+            if (item.Score >= 8) scoreClass = 'text-success';
+            else if (item.Score >= 6) scoreClass = 'text-warning';
+            
+            // Determine type badge color
+            let typeClass = 'bg-secondary';
+            if (item.Type === 'vocabulary') typeClass = 'bg-primary';
+            else if (item.Type === 'idiom') typeClass = 'bg-success';
+            else if (item.Type === 'phrasal_verb') typeClass = 'bg-info';
+            
+            row.innerHTML = `
+                <td><strong>${item['Question #']}</strong></td>
+                <td><span class="badge ${typeClass}">${item.Type.replace('_', ' ')}</span></td>
+                <td><strong>${item['Word/Phrase']}</strong></td>
+                <td class="text-truncate" style="max-width: 300px;" title="${item['User Answer']}">${item['User Answer']}</td>
+                <td><span class="badge ${scoreClass} fs-6">${item.Score}/10</span></td>
+                <td class="text-muted small">${item.Feedback}</td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+        
+        // Show results section
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('results-section').style.display = 'block';
+    }
+    
+    async processResults() {
+        if (!this.evaluationData) {
+            alert('No evaluation data available');
+            return;
+        }
+        
+        const processBtn = document.getElementById('process-results-btn');
+        const originalText = processBtn.innerHTML;
+        
+        // Disable button and show loading
+        processBtn.disabled = true;
+        processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing Mastery Levels...';
+        
+        try {
+            // First, update mastery levels via API
+            const masteryResponse = await this.updateMasteryLevels();
+            
+            // Show processing section
+            const processingSection = document.getElementById('processing-results');
+            const analysisContent = document.getElementById('analysis-content');
+            
+            // Generate analysis with mastery level updates
+            const analysis = this.generateAnalysis(masteryResponse);
+            analysisContent.innerHTML = analysis;
+            
+            processingSection.style.display = 'block';
+            
+            // Scroll to analysis section
+            processingSection.scrollIntoView({ behavior: 'smooth' });
+            
+        } catch (error) {
+            console.error('Error processing results:', error);
+            alert('Error processing results: ' + error.message);
+        } finally {
+            // Re-enable button
+            processBtn.disabled = false;
+            processBtn.innerHTML = originalText;
+        }
+    }
+    
+    async updateMasteryLevels() {
+        const threshold = parseInt(document.getElementById('score-threshold').value) || 8;
+        
+        const response = await fetch('/api/process-mastery-levels', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                detailed_evaluation: this.evaluationData['Detailed Evaluation'],
+                threshold: threshold
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.message);
+        }
+        
+        return result;
+    }
+    
+    generateAnalysis(masteryResponse = null) {
+        const summary = this.evaluationData.Summary;
+        const details = this.evaluationData['Detailed Evaluation'];
+        
+        // Calculate statistics
+        const scores = details.map(item => item.Score);
+        const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+        const maxScore = Math.max(...scores);
+        const minScore = Math.min(...scores);
+        
+        // Group by type
+        const typeStats = {};
+        details.forEach(item => {
+            if (!typeStats[item.Type]) {
+                typeStats[item.Type] = { total: 0, count: 0, scores: [] };
+            }
+            typeStats[item.Type].total += item.Score;
+            typeStats[item.Type].count += 1;
+            typeStats[item.Type].scores.push(item.Score);
+        });
+        
+        // Score distribution
+        const scoreRanges = {
+            'Excellent (9-10)': scores.filter(s => s >= 9).length,
+            'Good (7-8)': scores.filter(s => s >= 7 && s < 9).length,
+            'Fair (5-6)': scores.filter(s => s >= 5 && s < 7).length,
+            'Needs Improvement (0-4)': scores.filter(s => s < 5).length
+        };
+        
+        let analysisHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-chart-line"></i> Score Statistics</h6>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Average Score:</span>
+                            <strong class="text-primary">${avgScore}/10</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Highest Score:</span>
+                            <strong class="text-success">${maxScore}/10</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>Lowest Score:</span>
+                            <strong class="text-danger">${minScore}/10</strong>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-chart-pie"></i> Score Distribution</h6>
+                    <ul class="list-group list-group-flush">`;
+        
+        Object.entries(scoreRanges).forEach(([range, count]) => {
+            const percentage = ((count / details.length) * 100).toFixed(1);
+            analysisHtml += `
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>${range}:</span>
+                            <span><strong>${count}</strong> (${percentage}%)</span>
+                        </li>`;
+        });
+        
+        analysisHtml += `
+                    </ul>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h6><i class="fas fa-tags"></i> Performance by Type</h6>
+                    <div class="row">`;
+        
+        Object.entries(typeStats).forEach(([type, stats]) => {
+            const avgTypeScore = (stats.total / stats.count).toFixed(1);
+            const typeColor = type === 'vocabulary' ? 'primary' : 
+                             type === 'idiom' ? 'success' : 'info';
+            
+            analysisHtml += `
+                        <div class="col-md-4">
+                            <div class="card border-${typeColor}">
+                                <div class="card-body text-center">
+                                    <h5 class="text-${typeColor}">${type.replace('_', ' ').toUpperCase()}</h5>
+                                    <h3>${avgTypeScore}/10</h3>
+                                    <small class="text-muted">${stats.count} questions</small>
+                                </div>
+                            </div>
+                        </div>`;
+        });
+        
+        analysisHtml += `
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h6><i class="fas fa-lightbulb"></i> Recommendations</h6>
+                    <div class="alert alert-info">`;
+        
+        // Generate personalized recommendations
+        const recommendations = [];
+        
+        if (summary['Overall Score'] >= 8) {
+            recommendations.push("Excellent performance! You have a strong grasp of English vocabulary and expressions.");
+        } else if (summary['Overall Score'] >= 6) {
+            recommendations.push("Good work! Focus on practicing the areas where you scored lower to improve further.");
+        } else {
+            recommendations.push("There's room for improvement. Consider reviewing the fundamental concepts and practicing more frequently.");
+        }
+        
+        // Type-specific recommendations
+        Object.entries(typeStats).forEach(([type, stats]) => {
+            const avgTypeScore = stats.total / stats.count;
+            if (avgTypeScore < 7) {
+                recommendations.push(`Focus more on ${type.replace('_', ' ')} - your average score in this area is ${avgTypeScore.toFixed(1)}/10.`);
+            }
+        });
+        
+        if (summary['Areas for Improvement'] && summary['Areas for Improvement'].length > 0) {
+            recommendations.push("Pay special attention to the areas marked for improvement in your summary.");
+        }
+        
+        recommendations.forEach(rec => {
+            analysisHtml += `<p class="mb-2"><i class="fas fa-arrow-right text-primary me-2"></i>${rec}</p>`;
+        });
+        
+        analysisHtml += `
+                    </div>
+                </div>
+            </div>`;
+        
+        // Add mastery level updates section if available
+        if (masteryResponse) {
+            analysisHtml += `
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h6><i class="fas fa-level-up-alt"></i> Mastery Level Updates</h6>`;
+            
+            if (masteryResponse.updated_items && masteryResponse.updated_items.length > 0) {
+                analysisHtml += `
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading">🎉 Congratulations! ${masteryResponse.updated_items.length} items increased in mastery level:</h6>
+                        <div class="row">`;
+                
+                masteryResponse.updated_items.forEach(item => {
+                    const typeColor = item.type === 'vocabulary' ? 'primary' : 
+                                     item.type === 'idiom' ? 'success' : 'info';
+                    analysisHtml += `
+                            <div class="col-md-6 col-lg-4 mb-2">
+                                <div class="card border-${typeColor} h-100">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <span class="badge bg-${typeColor} mb-2">${item.type.replace('_', ' ')}</span>
+                                                <h6 class="card-title mb-1">${item.word}</h6>
+                                                <small class="text-muted">Score: ${item.score}/10</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="badge bg-light text-dark">
+                                                    Level ${item.old_level} → ${item.new_level}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                });
+                
+                analysisHtml += `
+                        </div>
+                        <hr>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Items scoring ${masteryResponse.threshold_used} or higher had their mastery level increased by 1.
+                        </small>
+                    </div>`;
+            } else {
+                analysisHtml += `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        No items met the threshold of ${masteryResponse.threshold_used} points to increase mastery level.
+                        Keep practicing to improve your scores!
+                    </div>`;
+            }
+            
+            if (masteryResponse.not_found_items && masteryResponse.not_found_items.length > 0) {
+                analysisHtml += `
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">⚠️ Items Not Found in Database:</h6>
+                        <ul class="mb-0">`;
+                
+                masteryResponse.not_found_items.forEach(item => {
+                    analysisHtml += `<li><strong>${item.word}</strong> (${item.type}) - Score: ${item.score}/10</li>`;
+                });
+                
+                analysisHtml += `
+                        </ul>
+                        <small class="text-muted mt-2 d-block">
+                            These items may need to be added to your vocabulary database to track progress.
+                        </small>
+                    </div>`;
+            }
+            
+            analysisHtml += `
+                </div>
+            </div>`;
+        }
+        
+        return analysisHtml;
+    }
+}
+
+// Initialize the manager when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    new EvaluationResultsManager();
+});
+</script>
+{% endblock %}

@@ -8,6 +8,9 @@ app.config['SECRET_KEY'] = 'dev-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vocabulary_app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Mastery level configuration
+MASTERY_SCORE_THRESHOLD = 8  # Configurable threshold for increasing mastery level
+
 db = SQLAlchemy(app)
 
 # Simple Models
@@ -681,6 +684,133 @@ def progress():
 def test():
     """10-minute test with sentence creation"""
     return render_template('test.html')
+
+@app.route('/evaluation-results')
+def evaluation_results():
+    """Display evaluation results with JSON upload functionality"""
+    return render_template('evaluation_results.html')
+
+@app.route('/api/process-mastery-levels', methods=['POST'])
+def process_mastery_levels():
+    """Process evaluation results and update mastery levels for high-scoring items"""
+    try:
+        data = request.get_json()
+        print(f"Received data: {data}")  # Debug print
+        
+        if not data or 'detailed_evaluation' not in data:
+            return jsonify({'success': False, 'message': 'Invalid data format'}), 400
+        
+        detailed_evaluation = data['detailed_evaluation']
+        threshold = data.get('threshold', MASTERY_SCORE_THRESHOLD)
+        
+        updated_items = []
+        not_found_items = []
+        
+        for item in detailed_evaluation:
+            score = item.get('Score', 0)
+            item_type = item.get('Type', '').lower()
+            word_phrase = item.get('Word/Phrase', '').strip()
+            
+            if score >= threshold and word_phrase:
+                # Find and update the appropriate item based on type
+                updated = False
+                
+                if item_type == 'vocabulary':
+                    vocab_item = VocabularyWord.query.filter(
+                        VocabularyWord.word.ilike(f'%{word_phrase}%')
+                    ).first()
+                    
+                    if vocab_item:
+                        old_level = vocab_item.mastery_level
+                        vocab_item.mastery_level += 1
+                        vocab_item.last_practiced = datetime.utcnow()
+                        vocab_item.times_practiced += 1
+                        try:
+                            db.session.commit()
+                        except Exception as db_error:
+                            db.session.rollback()
+                            print(f"Database error for vocabulary item {word_phrase}: {db_error}")
+                            continue
+                        updated_items.append({
+                            'type': 'vocabulary',
+                            'word': word_phrase,
+                            'old_level': old_level,
+                            'new_level': vocab_item.mastery_level,
+                            'score': score
+                        })
+                        updated = True
+                
+                elif item_type == 'idiom':
+                    idiom_item = Idiom.query.filter(
+                        Idiom.idiom.ilike(f'%{word_phrase}%')
+                    ).first()
+                    
+                    if idiom_item:
+                        old_level = idiom_item.mastery_level
+                        idiom_item.mastery_level += 1
+                        idiom_item.last_practiced = datetime.utcnow()
+                        idiom_item.times_practiced += 1
+                        try:
+                            db.session.commit()
+                        except Exception as db_error:
+                            db.session.rollback()
+                            print(f"Database error for idiom item {word_phrase}: {db_error}")
+                            continue
+                        updated_items.append({
+                            'type': 'idiom',
+                            'word': word_phrase,
+                            'old_level': old_level,
+                            'new_level': idiom_item.mastery_level,
+                            'score': score
+                        })
+                        updated = True
+                
+                elif item_type == 'phrasal_verb':
+                    phrasal_item = PhrasalVerb.query.filter(
+                        PhrasalVerb.phrasal_verb.ilike(f'%{word_phrase}%')
+                    ).first()
+                    
+                    if phrasal_item:
+                        old_level = phrasal_item.mastery_level
+                        phrasal_item.mastery_level += 1
+                        phrasal_item.last_practiced = datetime.utcnow()
+                        phrasal_item.times_practiced += 1
+                        try:
+                            db.session.commit()
+                        except Exception as db_error:
+                            db.session.rollback()
+                            print(f"Database error for phrasal verb item {word_phrase}: {db_error}")
+                            continue
+                        updated_items.append({
+                            'type': 'phrasal_verb',
+                            'word': word_phrase,
+                            'old_level': old_level,
+                            'new_level': phrasal_item.mastery_level,
+                            'score': score
+                        })
+                        updated = True
+                
+                if not updated:
+                    not_found_items.append({
+                        'type': item_type,
+                        'word': word_phrase,
+                        'score': score
+                    })
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {len(updated_items)} items',
+            'updated_items': updated_items,
+            'not_found_items': not_found_items,
+            'threshold_used': threshold,
+            'total_processed': len(detailed_evaluation)
+        })
+        
+    except Exception as e:
+        print(f"Error in process_mastery_levels: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error processing mastery levels: {str(e)}'}), 500
 
 @app.route('/api/generate-test', methods=['POST'])
 def generate_test():
