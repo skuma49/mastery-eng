@@ -301,13 +301,24 @@ class EvaluationResultsManager {
         // Update strengths
         const strengthsList = document.getElementById('strengths-list');
         strengthsList.innerHTML = '';
-        if (summary.Strengths && summary.Strengths.length > 0) {
-            summary.Strengths.forEach(strength => {
+        if (summary.Strengths) {
+            if (Array.isArray(summary.Strengths) && summary.Strengths.length > 0) {
+                // Handle array format
+                summary.Strengths.forEach(strength => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="fas fa-check text-success me-2"></i>${strength}`;
+                    li.className = 'mb-1';
+                    strengthsList.appendChild(li);
+                });
+            } else if (typeof summary.Strengths === 'string' && summary.Strengths.trim() !== '') {
+                // Handle string format
                 const li = document.createElement('li');
-                li.innerHTML = `<i class="fas fa-check text-success me-2"></i>${strength}`;
+                li.innerHTML = `<i class="fas fa-check text-success me-2"></i>${summary.Strengths}`;
                 li.className = 'mb-1';
                 strengthsList.appendChild(li);
-            });
+            } else {
+                strengthsList.innerHTML = '<li class="text-muted">No specific strengths identified</li>';
+            }
         } else {
             strengthsList.innerHTML = '<li class="text-muted">No specific strengths identified</li>';
         }
@@ -315,13 +326,24 @@ class EvaluationResultsManager {
         // Update areas for improvement
         const improvementsList = document.getElementById('improvement-list');
         improvementsList.innerHTML = '';
-        if (summary['Areas for Improvement'] && summary['Areas for Improvement'].length > 0) {
-            summary['Areas for Improvement'].forEach(area => {
+        if (summary['Areas for Improvement']) {
+            if (Array.isArray(summary['Areas for Improvement']) && summary['Areas for Improvement'].length > 0) {
+                // Handle array format
+                summary['Areas for Improvement'].forEach(area => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<i class="fas fa-exclamation text-warning me-2"></i>${area}`;
+                    li.className = 'mb-1';
+                    improvementsList.appendChild(li);
+                });
+            } else if (typeof summary['Areas for Improvement'] === 'string' && summary['Areas for Improvement'].trim() !== '') {
+                // Handle string format
                 const li = document.createElement('li');
-                li.innerHTML = `<i class="fas fa-exclamation text-warning me-2"></i>${area}`;
+                li.innerHTML = `<i class="fas fa-exclamation text-warning me-2"></i>${summary['Areas for Improvement']}`;
                 li.className = 'mb-1';
                 improvementsList.appendChild(li);
-            });
+            } else {
+                improvementsList.innerHTML = '<li class="text-muted">No specific areas for improvement identified</li>';
+            }
         } else {
             improvementsList.innerHTML = '<li class="text-muted">No specific areas for improvement identified</li>';
         }
