@@ -814,11 +814,20 @@ def process_mastery_levels():
 
 @app.route('/api/generate-test', methods=['POST'])
 def generate_test():
-    """Generate test questions based on mastery level >= 2"""
-    # Get items with mastery level >= 2
-    vocab_items = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 2).all()
-    phrasal_items = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 2).all()
-    idiom_items = Idiom.query.filter(Idiom.mastery_level >= 2).all()
+    """Generate test questions based on mastery level 2-4 (exclude mastered level 5)"""
+    # Get items with mastery level 2-4 (exclude mastered level 5)
+    vocab_items = VocabularyWord.query.filter(
+        VocabularyWord.mastery_level >= 2,
+        VocabularyWord.mastery_level < 5
+    ).all()
+    phrasal_items = PhrasalVerb.query.filter(
+        PhrasalVerb.mastery_level >= 2,
+        PhrasalVerb.mastery_level < 5
+    ).all()
+    idiom_items = Idiom.query.filter(
+        Idiom.mastery_level >= 2,
+        Idiom.mastery_level < 5
+    ).all()
     
     # Calculate question counts based on available items (target: 10 questions for 10-minute test)
     target_questions = 10
@@ -827,7 +836,7 @@ def generate_test():
     if total_available == 0:
         return jsonify({
             'success': False,
-            'message': 'No items with mastery level 2 or higher found'
+            'message': 'No items with mastery level 2-4 found (excluding mastered items)'
         })
     
     # Use all available items if less than target, otherwise use proportional distribution
