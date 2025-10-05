@@ -4,6 +4,8 @@ Give me meaning of below phrasal verb given in <<< >>> along with example senten
 
 Give me meaning of below idiom given in <<< >>> along with example sentence, exact idiom, difficulty level and origin in tabular format , . <<< all eggs in one basket >>>
 
+
+--------------------------------------------------------------------------------------------
 I have a JSON file containing responses to a vocabulary, idiom, and phrasal verb test. Please:
 
 Evaluate each response and assign a score out of 10 based on correctness, relevance, and clarity.
@@ -27,8 +29,9 @@ Strengths
 Areas for improvement
 
 Ensure the JSON is well-formatted and easy to read.  Input JSON starts here <<<     >>>
-
-
+--------------------------------------------------------------------------------------------
+Mastered evaluation
+---------------------
 Evaluate the following vocabulary test response and return the result in this JSON format:
 
 {
