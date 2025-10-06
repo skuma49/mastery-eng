@@ -929,9 +929,9 @@ def index():
     idiom_count = Idiom.query.count()
     
     # Get mastered counts
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).count()
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).count()
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).count()
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).count()
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).count()
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).count()
     total_mastered = mastered_vocab + mastered_phrasal + mastered_idioms
     
     # Get recently added items
@@ -1736,15 +1736,15 @@ def unified_test_api():
 # Mastered Words Section
 @app.route('/mastered')
 def mastered_words():
-    """Show all mastered words (mastery_level = 5)"""
+    """Show all mastered words (mastery_level >= 5)"""
     # Get mastered vocabulary words
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).all()
     
     # Get mastered phrasal verbs
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).all()
     
     # Get mastered idioms
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).all()
     
     # Calculate statistics
     total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
@@ -1761,6 +1761,63 @@ def mastered_words():
                          mastered_phrasal=mastered_phrasal,
                          mastered_idioms=mastered_idioms,
                          stats=stats)
+
+@app.route('/mastered/slideshow')
+def mastered_slideshow():
+    """Interactive slideshow for reviewing mastered words, phrasal verbs, and idioms"""
+    # Get mastered vocabulary words
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).all()
+    
+    # Get mastered phrasal verbs
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).all()
+    
+    # Get mastered idioms
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).all()
+    
+    # Convert to dictionaries for JSON serialization
+    vocab_data = []
+    for word in mastered_vocab:
+        vocab_data.append({
+            'id': word.id,
+            'word': word.word,
+            'definition': word.definition,
+            'example_sentence': word.example_sentence,
+            'mastery_level': word.mastery_level,
+            'times_practiced': word.times_practiced or 0
+        })
+    
+    phrasal_data = []
+    for phrasal in mastered_phrasal:
+        phrasal_data.append({
+            'id': phrasal.id,
+            'phrasal_verb': phrasal.phrasal_verb,
+            'meaning': phrasal.meaning,
+            'example_sentence': phrasal.example_sentence,
+            'mastery_level': phrasal.mastery_level,
+            'times_practiced': phrasal.times_practiced or 0
+        })
+    
+    idioms_data = []
+    for idiom in mastered_idioms:
+        idioms_data.append({
+            'id': idiom.id,
+            'idiom': idiom.idiom,
+            'meaning': idiom.meaning,
+            'example_sentence': idiom.example_sentence,
+            'mastery_level': idiom.mastery_level,
+            'times_practiced': idiom.times_practiced or 0
+        })
+    
+    total_count = len(vocab_data) + len(phrasal_data) + len(idioms_data)
+    
+    return render_template('mastered_slideshow.html',
+                         mastered_vocab=vocab_data,
+                         mastered_phrasal=phrasal_data,
+                         mastered_idioms=idioms_data,
+                         vocab_count=len(vocab_data),
+                         phrasal_count=len(phrasal_data),
+                         idioms_count=len(idioms_data),
+                         total_count=total_count)
 
 @app.route('/mastered/test')
 def mastered_test():
@@ -1875,9 +1932,9 @@ def submit_test_legacy():
 def get_mastered_test_questions_legacy():
     """Legacy implementation of get_mastered_test_questions"""
     # Get all mastered items (no need for example sentences as users will create their own)
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).all()
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).all()
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).all()
     
     all_sentence_questions = []
     

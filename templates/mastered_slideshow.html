@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+
+{% block title %}Mastered Words Review - Mastery English{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-presentation text-primary"></i> Mastered Words Review
+                </h1>
+                <div>
+                    <a href="{{ url_for('mastered_words') }}" class="btn btn-secondary me-2">
+                        <i class="fas fa-trophy"></i> Mastered List
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <!-- Slideshow Controls -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <h5 class="mb-0 me-3">
+                                    <i class="fas fa-star text-warning"></i> All Mastered Items ({{ total_count }})
+                                </h5>
+                                <div class="badge bg-primary me-2">{{ vocab_count }} Vocabulary</div>
+                                <div class="badge bg-success me-2">{{ phrasal_count }} Phrasal Verbs</div>
+                                <div class="badge bg-info">{{ idioms_count }} Idioms</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="prevBtn" onclick="previousSlide()">
+                                    <i class="fas fa-chevron-left"></i> Previous
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="nextBtn" onclick="nextSlide()">
+                                    Next <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-info" id="autoplayBtn" onclick="toggleAutoplay()">
+                                    <i class="fas fa-play"></i> Auto
+                                </button>
+                                <button type="button" class="btn btn-outline-success" id="shuffleBtn" onclick="toggleShuffle()">
+                                    <i class="fas fa-random"></i> Shuffle
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress mb-4" style="height: 8px;">
+                <div class="progress-bar bg-primary" id="progressBar" role="progressbar" style="width: 0%"></div>
+            </div>
+
+            <!-- Slideshow Container -->
+            <div class="card slideshow-container" id="slideshowContainer">
+                <div class="card-body text-center py-5">
+                    <div id="slideContent">
+                        <!-- Dynamic content will be loaded here -->
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin fa-3x text-muted mb-3"></i>
+                            <h3 class="text-muted">Loading your mastered words...</h3>
+                            <p class="text-muted">Get ready to review your achievements!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slide Counter -->
+            <div class="text-center mt-3">
+                <span class="badge bg-secondary px-3 py-2" id="slideCounter">0 / 0</span>
+            </div>
+
+            <!-- Settings Panel -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cog"></i> Review Settings
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="autoplaySpeed" class="form-label">Auto-play Speed</label>
+                            <select class="form-select" id="autoplaySpeed" onchange="updateAutoplaySpeed()">
+                                <option value="2000">Very Fast (2s)</option>
+                                <option value="3000" selected>Fast (3s)</option>
+                                <option value="5000">Normal (5s)</option>
+                                <option value="8000">Slow (8s)</option>
+                                <option value="12000">Very Slow (12s)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="showDefinition" class="form-label">Display Mode</label>
+                            <select class="form-select" id="showDefinition" onchange="updateDisplayMode()">
+                                <option value="both" selected>Word + Definition</option>
+                                <option value="word-first">Word First, Then Definition</option>
+                                <option value="definition-first">Definition First, Then Word</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Quick Actions</label><br>
+                            <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="resetSlideshow()">
+                                <i class="fas fa-refresh"></i> Reset
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="showAllSlides()">
+                                <i class="fas fa-list"></i> Show All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.slideshow-container {
+    min-height: 400px;
+    transition: all 0.3s ease;
+}
+
+.slide-content {
+    animation: slideIn 0.5s ease-in-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.word-display {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 1rem;
+}
+
+.definition-display {
+    font-size: 1.2rem;
+    color: #495057;
+    line-height: 1.6;
+    max-width: 800px;
+    margin: 0 auto 1rem;
+}
+
+.example-display {
+    font-style: italic;
+    color: #6c757d;
+    font-size: 1rem;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.mastery-badge-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.mastery-5 {
+    background: linear-gradient(45deg, #ffd700, #ffed4e);
+    color: #333;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.mastery-6 {
+    background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.category-vocabulary {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.category-phrasal {
+    background: #e8f5e8;
+    color: #388e3c;
+}
+
+.category-idioms {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.loading-state {
+    padding: 3rem 0;
+}
+
+.btn-group .btn.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+}
+
+.slide-transition {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.slide-out {
+    opacity: 0;
+    transform: translateX(-50px);
+}
+
+.slide-in {
+    opacity: 1;
+    transform: translateX(0);
+}
+</style>
+
+<script>
+class MasteredWordsSlideshow {
+    constructor() {
+        this.currentSlide = 0;
+        this.isAutoplay = false;
+        this.isShuffled = false;
+        this.autoplayInterval = null;
+        this.autoplaySpeed = 3000;
+        this.displayMode = 'both';
+        
+        // Get all items and mark them with their type
+        const vocabularyWords = {{ mastered_vocab | tojson | safe }};
+        const phrasalVerbs = {{ mastered_phrasal | tojson | safe }};
+        const idioms = {{ mastered_idioms | tojson | safe }};
+        
+        // Combine all items into one array with type indicators
+        this.allItems = [];
+        
+        vocabularyWords.forEach(word => {
+            this.allItems.push({
+                ...word,
+                type: 'vocabulary',
+                display_word: word.word,
+                display_meaning: word.definition
+            });
+        });
+        
+        phrasalVerbs.forEach(phrasal => {
+            this.allItems.push({
+                ...phrasal,
+                type: 'phrasal',
+                display_word: phrasal.phrasal_verb,
+                display_meaning: phrasal.meaning
+            });
+        });
+        
+        idioms.forEach(idiom => {
+            this.allItems.push({
+                ...idiom,
+                type: 'idioms',
+                display_word: idiom.idiom,
+                display_meaning: idiom.meaning
+            });
+        });
+        
+        this.currentItems = [...this.allItems];
+        this.originalItems = [...this.allItems];
+        
+        this.init();
+    }
+    
+    init() {
+        this.updateSlideCounter();
+        this.showSlide(0);
+        this.updateProgressBar();
+    }
+    
+    showSlide(index) {
+        if (this.currentItems.length === 0) return;
+        
+        const item = this.currentItems[index];
+        const slideContent = document.getElementById('slideContent');
+        
+        let categoryClass = '';
+        let categoryLabel = '';
+        let categoryIcon = '';
+        
+        if (item.type === 'vocabulary') {
+            categoryClass = 'category-vocabulary';
+            categoryLabel = 'Vocabulary Word';
+            categoryIcon = 'fas fa-book';
+        } else if (item.type === 'phrasal') {
+            categoryClass = 'category-phrasal';
+            categoryLabel = 'Phrasal Verb';
+            categoryIcon = 'fas fa-link';
+        } else if (item.type === 'idioms') {
+            categoryClass = 'category-idioms';
+            categoryLabel = 'Idiom';
+            categoryIcon = 'fas fa-lightbulb';
+        }
+        
+        const masteryClass = item.mastery_level >= 6 ? 'mastery-6' : 'mastery-5';
+        const exampleText = item.example_sentence || '';
+        
+        slideContent.innerHTML = `
+            <div class="slide-content">
+                <div class="category-badge ${categoryClass}">
+                    <i class="${categoryIcon}"></i> ${categoryLabel}
+                </div>
+                <div class="mastery-badge-large ${masteryClass}">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="word-display">${item.display_word}</div>
+                <div class="definition-display">${item.display_meaning}</div>
+                ${exampleText ? `<div class="example-display">"${exampleText}"</div>` : ''}
+                <div class="mt-4">
+                    <small class="text-muted">
+                        Mastery Level: ${item.mastery_level} | 
+                        Practiced: ${item.times_practiced || 0} times
+                    </small>
+                </div>
+            </div>
+        `;
+        
+        this.updateProgressBar();
+    }
+    
+    nextSlide() {
+        if (this.currentItems.length === 0) return;
+        
+        this.currentSlide = (this.currentSlide + 1) % this.currentItems.length;
+        this.showSlide(this.currentSlide);
+        this.updateSlideCounter();
+    }
+    
+    previousSlide() {
+        if (this.currentItems.length === 0) return;
+        
+        this.currentSlide = this.currentSlide > 0 ? this.currentSlide - 1 : this.currentItems.length - 1;
+        this.showSlide(this.currentSlide);
+        this.updateSlideCounter();
+    }
+    
+    toggleAutoplay() {
+        if (this.isAutoplay) {
+            this.stopAutoplay();
+        } else {
+            this.startAutoplay();
+        }
+    }
+    
+    startAutoplay() {
+        this.isAutoplay = true;
+        const autoplayBtn = document.getElementById('autoplayBtn');
+        autoplayBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        autoplayBtn.classList.remove('btn-outline-info');
+        autoplayBtn.classList.add('btn-info');
+        
+        this.autoplayInterval = setInterval(() => {
+            this.nextSlide();
+        }, this.autoplaySpeed);
+    }
+    
+    stopAutoplay() {
+        this.isAutoplay = false;
+        const autoplayBtn = document.getElementById('autoplayBtn');
+        autoplayBtn.innerHTML = '<i class="fas fa-play"></i> Auto';
+        autoplayBtn.classList.remove('btn-info');
+        autoplayBtn.classList.add('btn-outline-info');
+        
+        if (this.autoplayInterval) {
+            clearInterval(this.autoplayInterval);
+            this.autoplayInterval = null;
+        }
+    }
+    
+    toggleShuffle() {
+        if (this.isShuffled) {
+            this.isShuffled = false;
+            this.currentItems = [...this.originalItems];
+            document.getElementById('shuffleBtn').classList.remove('btn-success');
+            document.getElementById('shuffleBtn').classList.add('btn-outline-success');
+        } else {
+            this.isShuffled = true;
+            this.shuffleItems();
+            document.getElementById('shuffleBtn').classList.remove('btn-outline-success');
+            document.getElementById('shuffleBtn').classList.add('btn-success');
+        }
+        
+        this.currentSlide = 0;
+        this.showSlide(0);
+        this.updateSlideCounter();
+    }
+    
+    shuffleItems() {
+        for (let i = this.currentItems.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.currentItems[i], this.currentItems[j]] = [this.currentItems[j], this.currentItems[i]];
+        }
+    }
+    
+    updateAutoplaySpeed() {
+        const speed = document.getElementById('autoplaySpeed').value;
+        this.autoplaySpeed = parseInt(speed);
+        
+        if (this.isAutoplay) {
+            this.stopAutoplay();
+            this.startAutoplay();
+        }
+    }
+    
+    updateDisplayMode() {
+        this.displayMode = document.getElementById('showDefinition').value;
+        this.showSlide(this.currentSlide);
+    }
+    
+    resetSlideshow() {
+        this.stopAutoplay();
+        this.currentSlide = 0;
+        this.isShuffled = false;
+        this.currentItems = [...this.originalItems];
+        
+        document.getElementById('shuffleBtn').classList.remove('btn-success');
+        document.getElementById('shuffleBtn').classList.add('btn-outline-success');
+        
+        this.showSlide(0);
+        this.updateSlideCounter();
+    }
+    
+    showAllSlides() {
+        // This could open a modal or redirect to the mastered words list
+        window.location.href = "{{ url_for('mastered_words') }}";
+    }
+    
+    updateSlideCounter() {
+        const counter = document.getElementById('slideCounter');
+        counter.textContent = `${this.currentSlide + 1} / ${this.currentItems.length}`;
+    }
+    
+    updateProgressBar() {
+        const progressBar = document.getElementById('progressBar');
+        const progress = this.currentItems.length > 0 ? ((this.currentSlide + 1) / this.currentItems.length) * 100 : 0;
+        progressBar.style.width = `${progress}%`;
+    }
+}
+
+// Initialize slideshow when page loads
+let slideshow;
+document.addEventListener('DOMContentLoaded', function() {
+    slideshow = new MasteredWordsSlideshow();
+});
+
+// Global functions for button clicks
+function nextSlide() {
+    slideshow.nextSlide();
+}
+
+function previousSlide() {
+    slideshow.previousSlide();
+}
+
+function toggleAutoplay() {
+    slideshow.toggleAutoplay();
+}
+
+function toggleShuffle() {
+    slideshow.toggleShuffle();
+}
+
+function updateAutoplaySpeed() {
+    slideshow.updateAutoplaySpeed();
+}
+
+function updateDisplayMode() {
+    slideshow.updateDisplayMode();
+}
+
+function resetSlideshow() {
+    slideshow.resetSlideshow();
+}
+
+function showAllSlides() {
+    slideshow.showAllSlides();
+}
+
+// Keyboard controls
+document.addEventListener('keydown', function(event) {
+    switch(event.key) {
+        case 'ArrowRight':
+        case ' ':
+            event.preventDefault();
+            nextSlide();
+            break;
+        case 'ArrowLeft':
+            event.preventDefault();
+            previousSlide();
+            break;
+        case 'p':
+        case 'P':
+            event.preventDefault();
+            toggleAutoplay();
+            break;
+        case 's':
+        case 'S':
+            event.preventDefault();
+            toggleShuffle();
+            break;
+        case 'r':
+        case 'R':
+            event.preventDefault();
+            resetSlideshow();
+            break;
+    }
+});
+</script>
+{% endblock %}
