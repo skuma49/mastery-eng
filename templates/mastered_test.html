@@ -130,7 +130,7 @@ function startTest() {
     document.getElementById('loading-section').classList.remove('d-none');
     
     // Fetch test questions
-    fetch('/api/mastered-test-questions')
+    fetch('/api/test?type=mastery')
         .then(response => response.json())
         .then(data => {
             document.getElementById('loading-section').classList.add('d-none');
@@ -283,7 +283,7 @@ function submitTest() {
     });
     
     // Submit test
-    fetch('/api/submit-mastered-test', {
+    fetch('/api/test', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

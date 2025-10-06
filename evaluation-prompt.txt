@@ -1,0 +1,52 @@
+VOCABULARY, IDIOM & PHRASAL VERB TEST EVALUATION PROMPT
+========================================================
+
+I have a JSON file containing responses to a vocabulary, idiom, and phrasal verb test. Please evaluate each response and provide a detailed assessment.
+
+EVALUATION CRITERIA:
+- Score each answer out of 10 based on correctness, relevance, and clarity
+- Provide constructive feedback explaining the score and improvement suggestions
+- Consider partial credit for answers that show understanding but lack precision
+- Evaluate comprehension of context, usage, and meaning
+
+REQUIRED OUTPUT FORMAT:
+Generate a professional JSON report with the following structure:
+
+```json
+{
+  "overall_score": [calculated average out of 10],
+  "total_questions": [number of questions],
+  "evaluation_summary": "Brief summary of performance",
+  "details": [
+    {
+      "Question #": 1,
+      "Type": "vocabulary|idiom|phrasal_verb",
+      "Word/Phrase": "[the target word/phrase being tested]",
+      "User Answer": "[student's response]",
+      "Score": [0-10],
+      "Feedback": "[detailed explanation of score and improvement suggestions]"
+    }
+  ]
+}
+```
+
+SCORING GUIDELINES:
+- 9-10: Excellent - Complete, accurate, demonstrates full understanding
+- 7-8: Good - Mostly correct with minor gaps or imprecision
+- 5-6: Satisfactory - Basic understanding but missing key elements
+- 3-4: Needs improvement - Some understanding but significant errors
+- 1-2: Poor - Little to no understanding demonstrated
+- 0: No response or completely incorrect
+
+EVALUATION FOCUS AREAS:
+1. VOCABULARY: Definition accuracy, usage understanding, context appropriateness
+2. IDIOMS: Meaning comprehension, usage context, cultural understanding
+3. PHRASAL VERBS: Meaning accuracy, separable/inseparable usage, context application
+
+Please ensure your evaluation is:
+- Constructive and educational
+- Specific about what was correct/incorrect
+- Helpful for learning improvement
+- Consistent with the scoring rubric
+
+Input JSON starts here <<<   >>>

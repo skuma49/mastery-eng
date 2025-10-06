@@ -113,13 +113,13 @@
                         <i class="fas fa-crown"></i> View Mastered
                     </a>
                     {% if total_mastered > 0 %}
-                    <a href="{{ url_for('mastered_test') }}" class="btn btn-outline-light me-2">
+                    <a href="{{ url_for('test') }}?type=mastery" class="btn btn-outline-light me-2">
                         <i class="fas fa-brain"></i> Advanced Test
                     </a>
-                    <a href="{{ url_for('submit_evaluation') }}" class="btn btn-outline-light">
-                        <i class="fas fa-clipboard-check"></i> Submit Results
-                    </a>
                     {% endif %}
+                    <a href="{{ url_for('test') }}" class="btn btn-outline-light">
+                        <i class="fas fa-graduation-cap"></i> Test Center
+                    </a>
                 </div>
             </div>
         </div>

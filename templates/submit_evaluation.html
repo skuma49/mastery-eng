@@ -221,12 +221,16 @@ function validateAndSubmit() {
     submitBtn.disabled = true;
     
     // Submit to API
-    fetch('/api/submit-evaluation-results', {
+    fetch('/api/evaluation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(parsedData)
+        body: JSON.stringify({
+            action: 'update_mastery',
+            data: parsedData,
+            threshold: 7
+        })
     })
     .then(response => response.json())
     .then(data => {

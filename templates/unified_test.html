@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}{{ test_config.title }} - Mastery English{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Test Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="{{ test_config.icon }}"></i> {{ test_config.title }}</h1>
+                <div class="d-flex align-items-center gap-3">
+                    {% if test_config.show_results_link %}
+                    <a href="{{ url_for('results', type=test_config.test_type) }}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar"></i> View Results
+                    </a>
+                    {% endif %}
+                    {% if test_config.back_url %}
+                    <a href="{{ test_config.back_url }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    {% endif %}
+                    {% if test_config.has_timer %}
+                    <div id="timer" class="badge bg-primary fs-4 px-3 py-2">
+                        <i class="fas fa-stopwatch"></i> {{ test_config.timer_display }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <p class="text-muted">{{ test_config.description }}</p>
+        </div>
+    </div>
+
+    <!-- Test States -->
+    <!-- Loading State -->
+    <div id="loading-state" class="text-center py-5">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h3>Preparing your test...</h3>
+        <p class="text-muted">{{ test_config.loading_message }}</p>
+    </div>
+
+    <!-- Pre-Test Instructions -->
+    <div id="pre-test" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="{{ test_config.instruction_icon }} text-info mb-3" style="font-size: 3rem;"></i>
+                    <h2>{{ test_config.instruction_title }}</h2>
+                    <div class="text-start mt-4">
+                        <ul class="list-group list-group-flush">
+                            {% for instruction in test_config.instructions %}
+                            <li class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>{{ instruction }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <button id="start-test" class="btn btn-primary btn-lg mt-4">
+                        <i class="fas fa-play"></i> Start {{ test_config.test_type|title }} Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Interface -->
+    <div id="test-interface" style="display: none;">
+        <!-- Progress Bar -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted">Progress</span>
+                    <span id="question-counter" class="text-muted">1 / 10</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 10%" 
+                         aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Card -->
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">
+                                <span id="question-type-badge" class="badge bg-info me-2">Vocabulary</span>
+                                Question <span id="current-question">1</span>
+                            </h4>
+                            {% if test_config.has_timer %}
+                            <div id="timer-small" class="badge bg-warning">
+                                <i class="fas fa-clock"></i> {{ test_config.timer_display }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Word/Phrase Display -->
+                        <div class="text-center mb-4">
+                            <h2 id="question-text" class="text-primary">Loading...</h2>
+                            {% if test_config.show_examples %}
+                            <div id="question-example" class="alert alert-light mt-3" style="display: none;">
+                                <small class="text-muted">Example: </small>
+                                <em id="example-text"></em>
+                            </div>
+                            {% endif %}
+                            {% if test_config.show_definitions %}
+                            <div id="question-definition" class="alert alert-info mt-3" style="display: none;">
+                                <small class="text-muted">Definition: </small>
+                                <span id="definition-text"></span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Additional Context for Mastery Tests -->
+                        {% if test_config.test_type == 'mastery' %}
+                        <div id="question-context" class="mb-4">
+                            <!-- Context will be populated by JavaScript -->
+                        </div>
+                        {% endif %}
+
+                        <!-- Answer Input -->
+                        <div class="mb-4">
+                            <label for="sentence-input" class="form-label">
+                                <strong>{{ test_config.input_label }} "<span id="word-highlight"></span>":</strong>
+                            </label>
+                            <textarea id="sentence-input" 
+                                    class="form-control form-control-lg" 
+                                    rows="3" 
+                                    placeholder="{{ test_config.input_placeholder }}"
+                                    style="font-size: 1.1rem;"></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb text-warning"></i> 
+                                {{ test_config.input_hint }}
+                            </div>
+                        </div>
+
+                        <!-- Navigation Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <button id="prev-btn" class="btn btn-outline-secondary" disabled>
+                                <i class="fas fa-arrow-left"></i> Previous
+                            </button>
+                            <div>
+                                <button id="next-btn" class="btn btn-primary">
+                                    Next <i class="fas fa-arrow-right"></i>
+                                </button>
+                                <button id="finish-btn" class="btn btn-success" style="display: none;">
+                                    <i class="fas fa-check"></i> Finish Test
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Completion -->
+    <div id="test-complete" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="{{ test_config.completion_icon }} text-warning mb-3" style="font-size: 4rem;"></i>
+                    <h2>{{ test_config.completion_title }}</h2>
+                    <p class="text-muted fs-5">{{ test_config.completion_message }}</p>
+                    <div id="test-summary" class="mt-4 mb-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 id="total-answered" class="text-primary">0</h3>
+                                        <small class="text-muted">Questions Answered</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if test_config.has_timer %}
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 id="time-taken" class="text-success">0:00</h3>
+                                        <small class="text-muted">Time Taken</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-info">JSON</h3>
+                                        <small class="text-muted">Format</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-info">JSON</h3>
+                                        <small class="text-muted">Format</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h3 class="text-success">External</h3>
+                                        <small class="text-muted">Evaluation</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <button id="download-btn" class="btn btn-success btn-lg">
+                            <i class="fas fa-download"></i> Download Results
+                        </button>
+                        {% for action in test_config.completion_actions %}
+                        <a href="{{ action.url }}" class="btn {{ action.class }} btn-lg">
+                            <i class="{{ action.icon }}"></i> {{ action.text }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include the unified test framework -->
+<script src="{{ url_for('static', filename='js/unified-test-framework.js') }}"></script>
+
+<script>
+// Test configuration from backend
+const testConfig = {{ test_config | tojson | safe }};
+
+// Initialize the appropriate test manager based on test type
+document.addEventListener('DOMContentLoaded', () => {
+    let testManager;
+    
+    if (testConfig.test_type === 'mastery') {
+        testManager = new MasteryTestManager(testConfig);
+    } else {
+        testManager = new RegularTestManager(testConfig);
+    }
+    
+    // Store globally for debugging
+    window.testManager = testManager;
+});
+</script>
+{% endblock %}

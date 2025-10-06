@@ -1,0 +1,1702 @@
+{% extends "base.html" %}
+
+{% block title %}Unified Test Interface - Mastery English{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 1rem; min-height: 100vh;">
+    <!-- Compact Header -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Test Center</h3>
+                <div class="d-flex align-items-center gap-3">
+                    <button id="eval-header-btn" class="btn btn-outline-info btn-sm" onclick="showEvaluationSection()" title="Process previous test results">
+                        <i class="fas fa-chart-bar me-1"></i> Evaluate Results
+                    </button>
+                    <div id="timer" class="badge bg-primary px-3 py-2" style="display: none; font-size: 0.9rem;">
+                        <i class="fas fa-stopwatch"></i> <span id="timer-display">10:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compact Test Type Selection -->
+    <div id="test-selection" class="row flex-fill">
+        <div class="col-12 d-flex align-items-center justify-content-center">
+            <div class="card shadow border-0" style="max-width: 900px; width: 100%;">
+                <div class="card-body p-4">
+                    <div class="text-center mb-3">
+                        <h4 class="mb-2">Choose Your Test Type</h4>
+                        <p class="text-muted mb-0">Select the appropriate test for your level</p>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card border-primary test-type-card h-100" onclick="selectTestType('regular')" style="cursor: pointer;">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-clock text-primary mb-2" style="font-size: 1.5rem;"></i>
+                                    <h5 class="mb-2">10-Minute Test</h5>
+                                    <div class="row text-start">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Timed assessment</small>
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Definitions provided</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Mixed content</small>
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Immediate eval</small>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm mt-2 w-100">Start Regular Test</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-warning test-type-card h-100" onclick="selectTestType('mastery')" style="cursor: pointer;">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-brain text-warning mb-2" style="font-size: 1.5rem;"></i>
+                                    <h5 class="mb-2">Advanced Mastery</h5>
+                                    <div class="row text-start">
+                                        <div class="col-6">
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Untimed test</small>
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>No hints</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>Mastered only</small>
+                                            <small class="text-muted d-block"><i class="fas fa-check text-success me-1"></i>External eval</small>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-warning btn-sm mt-2 w-100">Start Mastery Test</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Evaluation Option -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-info bg-light">
+                                <div class="card-body text-center p-3">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-2">
+                                            <i class="fas fa-chart-line text-info" style="font-size: 2rem;"></i>
+                                        </div>
+                                        <div class="col-md-7 text-start">
+                                            <h6 class="mb-1">Process Previous Test Results</h6>
+                                            <small class="text-muted">Upload evaluation results from previous tests to update mastery levels</small>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <button class="btn btn-info" onclick="showEvaluationSection()">
+                                                <i class="fas fa-upload me-1"></i> Evaluate Results
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="text-center py-5" style="display: none;">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h3 id="loading-title">Preparing your test...</h3>
+        <p class="text-muted" id="loading-message">Selecting questions based on your mastery level</p>
+    </div>
+
+    <!-- Pre-Test Instructions -->
+    <div id="pre-test" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i id="instruction-icon" class="fas fa-info-circle text-info mb-3" style="font-size: 3rem;"></i>
+                    <h2 id="instruction-title">Test Instructions</h2>
+                    <div class="text-start mt-4">
+                        <ul class="list-group list-group-flush" id="instruction-list">
+                            <!-- Instructions will be populated dynamically -->
+                        </ul>
+                    </div>
+                    <div class="mt-4">
+                        <button class="btn btn-success btn-lg" onclick="startTest()">
+                            <i class="fas fa-play"></i> Start Test
+                        </button>
+                        <button class="btn btn-outline-secondary btn-lg ms-2" onclick="backToSelection()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center-Aligned Single-Screen Test -->
+    <div id="active-test" style="display: none;">
+        <!-- Top Progress Bar -->
+        <div class="card mb-3">
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small id="progress-text" class="fw-semibold">Question 1 of 10</small>
+                    <div class="progress flex-grow-1 mx-3" style="height: 6px;">
+                        <div class="progress-bar bg-primary" id="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small id="progress-percentage" class="fw-semibold">0%</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Center Question Area -->
+        <div class="row justify-content-center mb-3"> 
+            <div class="col-lg-10 col-xl-8">
+
+                <!-- Centered Question Card -->
+                <div class="card shadow fade-in" style="min-height: 450px;">
+                    <div class="card-body p-4">
+                        <!-- Centered Word Display -->
+                        <div class="text-center mb-4">
+                            <h1 id="target-word" class="fw-bold text-gradient-primary mb-2" style="font-size: 2.8rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">Loading...</h1>
+                            <div class="mb-3">
+                                <span class="badge bg-success px-3 py-2" style="font-size: 1rem;">
+                                    <i class="fas fa-tag me-1"></i>
+                                    <span id="word-type">Type</span>
+                                </span>
+                            </div>
+                            <div id="word-info" class="text-center">
+                                <!-- Definition and example will be shown here -->
+                            </div>
+                        </div>
+
+                        <!-- Answer Input Section -->
+                        <div class="mb-4">
+                            <label for="answer" class="form-label fw-semibold mb-2 text-center d-block">
+                                <i class="fas fa-pen me-2 text-primary"></i>Your Creative Sentence
+                            </label>
+                            <div class="position-relative">
+                                <textarea class="form-control" 
+                                        id="answer" 
+                                        placeholder="✨ Write your creative sentence using this word..."
+                                        onkeyup="checkAnswer()"
+                                        style="border: 2px solid #e9ecef; border-radius: 15px; padding: 1.5rem; resize: none; min-height: 120px; font-size: 1.1rem;"></textarea>
+                                
+                                <div id="typing-indicator" class="position-absolute top-0 end-0 p-2 d-none">
+                                    <span class="badge bg-primary px-2 py-1" style="font-size: 0.8rem;">
+                                        <i class="fas fa-keyboard me-1"></i> Typing...
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- Help Text -->
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted" id="answer-hint">
+                                    <i class="fas fa-lightbulb text-warning me-1"></i>
+                                    Demonstrate the word's meaning clearly and creatively
+                                </small>
+                                <small id="char-counter" class="fw-semibold text-muted">0 chars</small>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Full-Width Progress & Navigation Panel -->
+        <div class="card mt-3">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <!-- Left: Stats -->
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-center justify-md-start gap-4">
+                            <div class="text-center">
+                                <div class="fw-bold text-primary" id="answered-count" style="font-size: 1.5rem;">0</div>
+                                <small class="text-muted fw-semibold">Answered</small>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold text-warning" id="skipped-count" style="font-size: 1.5rem;">0</div>
+                                <small class="text-muted fw-semibold">Skipped</small>
+                            </div>
+                            <div class="text-center">
+                                <div class="fw-bold text-secondary" id="remaining-count" style="font-size: 1.5rem;">0</div>
+                                <small class="text-muted fw-semibold">Remaining</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Center: Navigation Buttons -->
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-center gap-2">
+                            <button class="btn btn-outline-secondary" onclick="previousQuestion()" id="prev-btn" disabled>
+                                <i class="fas fa-arrow-left me-1"></i> Previous
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="skipQuestion()" id="skip-btn">
+                                <i class="fas fa-forward me-1"></i> Skip
+                            </button>
+                            <button class="btn btn-primary" onclick="nextQuestion()" id="next-btn" disabled>
+                                Next <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                            <button class="btn btn-success" onclick="completeTest()" id="complete-btn" style="display: none;">
+                                <i class="fas fa-check me-1"></i> Complete
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Question Grid -->
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <small class="text-muted fw-semibold mb-2 d-block">Quick Navigation</small>
+                            <div id="question-grid" class="d-flex justify-content-center flex-wrap gap-1" style="max-width: 300px; margin: 0 auto;">
+                                <!-- Question navigation buttons will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Completed State -->
+    <div id="test-completed" class="row justify-content-center" style="display: none;">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i id="completion-icon" class="fas fa-trophy text-success mb-3" style="font-size: 4rem;"></i>
+                    <h2 id="completion-title">Test Completed!</h2>
+                    <p id="completion-message" class="text-muted mb-4">Great job! You've completed your test.</p>
+                    
+                    <!-- Test Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h3 id="final-answered" class="text-primary mb-1">0</h3>
+                                <small class="text-muted">Questions Answered</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h3 id="final-completion" class="text-success mb-1">0%</h3>
+                                <small class="text-muted">Completion Rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h3 id="final-time" class="text-info mb-1">--:--</h3>
+                                <small class="text-muted">Time Taken</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 justify-content-center mb-4">
+                        <button class="btn btn-success btn-lg" onclick="downloadResults()">
+                            <i class="fas fa-download"></i> Download Results
+                        </button>
+                        <button class="btn btn-info btn-lg" onclick="showEvaluationSection()">
+                            <i class="fas fa-chart-bar"></i> View & Submit Results
+                        </button>
+                    </div>
+
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button class="btn btn-outline-primary" onclick="restartTest()">
+                            <i class="fas fa-redo"></i> Take Another Test
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="backToHome()">
+                            <i class="fas fa-home"></i> Back to Home
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results and Evaluation Section -->
+    <div id="evaluation-section" class="row" style="display: none;">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-bar"></i> Test Results & Evaluation</h2>
+                <button class="btn btn-outline-secondary" onclick="hideEvaluationSection()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+
+            <!-- File Upload Section -->
+            <div id="upload-section" class="row justify-content-center mb-4">
+                <div class="col-md-8">
+                    <div class="card shadow">
+                        <div class="card-body text-center py-4">
+                            <i class="fas fa-file-upload text-primary mb-3" style="font-size: 2.5rem;"></i>
+                            <h4>Upload Evaluation Results</h4>
+                            <p class="text-muted" id="upload-description">Upload your evaluation JSON file to view detailed results</p>
+                            
+                            <form id="upload-form" enctype="multipart/form-data" class="mt-4">
+                                <div class="mb-3">
+                                    <input type="file" class="form-control" id="json-file" accept=".json" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-upload"></i> Process Results
+                                </button>
+                            </form>
+                            
+                            <!-- Alternative JSON Paste Method -->
+                            <div class="mt-3">
+                                <hr>
+                                <button type="button" class="btn btn-outline-secondary" onclick="showJSONPaste()">
+                                    <i class="fas fa-paste"></i> Paste JSON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JSON Paste Section -->
+            <div id="json-paste-section" class="row justify-content-center mb-4" style="display: none;">
+                <div class="col-md-10">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fas fa-paste"></i> Paste JSON Data</h5>
+                            <textarea id="json-textarea" class="form-control font-monospace" rows="10" 
+                                    placeholder="Paste your evaluation JSON data here..."></textarea>
+                            <div class="mt-3">
+                                <button class="btn btn-success" onclick="processJSONText()">
+                                    <i class="fas fa-check"></i> Process JSON
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="hideJSONPaste()">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing State -->
+            <div id="processing-state" class="text-center py-4" style="display: none;">
+                <div class="spinner-border text-success mb-3" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <h4>Processing Results...</h4>
+                <p class="text-muted">Analyzing evaluation data and updating mastery levels</p>
+            </div>
+
+            <!-- Results Display -->
+            <div id="results-display" style="display: none;">
+                <!-- Results content will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Configuration Data (Hidden) -->
+<div id="test-configs" style="display: none;">
+    <!-- Configuration data will be loaded here -->
+</div>
+
+<style>
+/* Premium Color Palette */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --danger-gradient: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    --glass-bg: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --border-radius: 16px;
+    --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Single-Page Layout */
+.container-fluid {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    height: 100vh;
+    font-family: var(--font-primary);
+    overflow: hidden;
+}
+
+body {
+    overflow: hidden;
+}
+
+/* Premium Card Styling */
+.card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--border-radius) !important;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(10px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    position: relative;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+    opacity: 1;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* Premium Header */
+h1 {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Premium Test Type Cards */
+.test-type-card {
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: var(--glass-bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.test-type-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.test-type-card:hover::before {
+    left: 100%;
+}
+
+.test-type-card:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--primary-gradient);
+}
+
+.test-type-card.border-primary:hover {
+    border-image: var(--primary-gradient) 1;
+}
+
+.test-type-card.border-warning:hover {
+    border-image: var(--warning-gradient) 1;
+}
+
+/* Premium Buttons */
+.btn {
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border: none;
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-success {
+    background: var(--success-gradient);
+    border: none;
+    color: white;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(17, 153, 142, 0.3);
+}
+
+.btn-warning {
+    background: var(--warning-gradient);
+    border: none;
+    color: white;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+}
+
+/* Premium Question Grid - Horizontal Layout */
+#question-grid {
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+#question-grid button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #e9ecef;
+    background: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+#question-grid button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+    transform: translate(-50%, -50%);
+}
+
+#question-grid button:hover::before {
+    width: 32px;
+    height: 32px;
+}
+
+#question-grid button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+#question-grid button.answered {
+    background: var(--success-gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+}
+
+#question-grid button.skipped {
+    background: var(--warning-gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+}
+
+#question-grid button.current {
+    background: var(--primary-gradient);
+    border-color: transparent;
+    color: white;
+    animation: pulse-premium 2s infinite;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Premium Animations */
+@keyframes pulse-premium {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Premium Form Controls */
+.form-control, .form-select {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    background: white;
+}
+
+/* Premium Progress Bar */
+.progress {
+    height: 12px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: var(--primary-gradient);
+    border-radius: 6px;
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: progressShine 2s infinite;
+}
+
+@keyframes progressShine {
+    0% { left: -100%; }
+    50%, 100% { left: 100%; }
+}
+
+/* Premium Timer */
+#timer {
+    background: var(--dark-gradient) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 0.75rem 1.5rem !important;
+    backdrop-filter: blur(10px);
+    font-weight: 700;
+    font-size: 1.1rem !important;
+    animation: timerGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes timerGlow {
+    from { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3); }
+    to { box-shadow: 0 8px 40px rgba(102, 126, 234, 0.6); }
+}
+
+/* Premium Alerts */
+.alert {
+    border: none;
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(10px);
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background: rgba(17, 153, 142, 0.1);
+    border-left-color: #11998e;
+    color: #0c5d56;
+}
+
+.alert-info {
+    background: rgba(102, 126, 234, 0.1);
+    border-left-color: #667eea;
+    color: #4c63d2;
+}
+
+/* Premium Loading States */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+}
+
+/* Smooth Transitions */
+.fade-in {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.slide-in {
+    animation: slideIn 0.6s ease-out;
+}
+
+/* Premium Typography */
+h2, h3, h4, h5 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.text-muted {
+    color: #6c757d !important;
+    font-weight: 500;
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .test-type-card:hover {
+        transform: translateY(-6px) scale(1.01);
+    }
+}
+</style>
+
+<script>
+// Global variables
+let currentTestType = 'regular';
+let testData = null;
+let currentQuestionIndex = 0;
+let userAnswers = [];
+let testStartTime = null;
+let timerInterval = null;
+let timeRemaining = 600; // 10 minutes in seconds
+
+// Test configurations
+const testConfigs = {
+    regular: {
+        title: '10-Minute Test',
+        icon: 'fas fa-clock',
+        description: 'Create sentences using the given words, phrasal verbs, and idioms. Show your mastery!',
+        hasTimer: true,
+        timerDuration: 600,
+        showDefinitions: false,
+        showExamples: false,
+        instructions: [
+            'You have <strong>10 minutes</strong> to complete the test',
+            'Create <strong>meaningful sentences</strong> using each given word/phrase',
+            'Questions include: <strong>40% idioms, 30% vocabulary, 30% phrasal verbs</strong>',
+            'Only items you\'ve mastered (level 2+) are included',
+            'Results will be downloadable as JSON after completion'
+        ]
+    },
+    mastery: {
+        title: 'Advanced Mastery Test',
+        icon: 'fas fa-brain',
+        description: 'Prove your mastery with creative sentence writing. No hints provided!',
+        hasTimer: false,
+        timerDuration: 0,
+        showDefinitions: false,
+        showExamples: false,
+        instructions: [
+            '<strong>Creative sentence writing</strong> - prove your mastery!',
+            '<strong>No definitions provided</strong> - only the word is shown',
+            'Dynamic test adapts to your current mastered words',
+            'Results exported as JSON for external evaluation',
+            'Poor performance will <strong>reset words to practice mode</strong>'
+        ]
+    }
+};
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Check URL parameters for test type and evaluation mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const typeFromUrl = urlParams.get('type');
+    const evaluationMode = urlParams.get('evaluation');
+    
+    if (typeFromUrl && testConfigs[typeFromUrl]) {
+        currentTestType = typeFromUrl;
+        
+        if (evaluationMode === 'true') {
+            // Skip test selection and go directly to evaluation section
+            document.getElementById('test-selection').style.display = 'none';
+            showEvaluationSection();
+        } else {
+            selectTestType(typeFromUrl);
+        }
+    }
+});
+
+function selectTestType(type) {
+    currentTestType = type;
+    const config = testConfigs[type];
+    
+    // Hide selection screen and start test directly for single-page experience
+    document.getElementById('test-selection').style.display = 'none';
+    document.getElementById('loading-state').style.display = 'block';
+    
+    // Load test data immediately
+    loadTestData();
+}
+
+function showInstructions() {
+    const config = testConfigs[currentTestType];
+    
+    // Update instructions
+    document.getElementById('instruction-title').textContent = 'Test Instructions';
+    const instructionsList = document.getElementById('instruction-list');
+    instructionsList.innerHTML = '';
+    
+    config.instructions.forEach(instruction => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.innerHTML = `<i class="fas fa-check text-success me-2"></i>${instruction}`;
+        instructionsList.appendChild(li);
+    });
+    
+    document.getElementById('pre-test').style.display = 'block';
+}
+
+function backToSelection() {
+    // Hide all test states and show selection
+    document.getElementById('pre-test').style.display = 'none';
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('active-test').style.display = 'none';
+    document.getElementById('evaluation-section').style.display = 'none';
+    document.getElementById('test-selection').style.display = 'block';
+    
+    // Show header evaluate button
+    document.getElementById('eval-header-btn').style.display = 'block';
+    
+    // Reset test state
+    currentQuestionIndex = 0;
+    userAnswers = [];
+    testData = null;
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function startTest() {
+    document.getElementById('pre-test').style.display = 'none';
+    document.getElementById('loading-state').style.display = 'block';
+    
+    const config = testConfigs[currentTestType];
+    document.getElementById('loading-title').textContent = 'Preparing your test...';
+    document.getElementById('loading-message').textContent = 'Selecting questions based on your mastery level';
+    
+    // Load test data
+    loadTestData();
+}
+
+function loadTestData() {
+    // Update loading message based on test type
+    const config = testConfigs[currentTestType];
+    document.getElementById('loading-title').textContent = `Preparing ${config.title}...`;
+    document.getElementById('loading-message').textContent = 'Loading questions based on your mastery level';
+    
+    fetch(`/api/test?type=${currentTestType}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                testData = data;
+                initializeTest();
+            } else {
+                console.error('API Error:', data.message);
+                alert(`Error: ${data.message || 'Failed to load test questions'}`);
+                backToSelection();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading test:', error);
+            alert('Error loading test. Please try again.');
+            backToSelection();
+        });
+}
+
+function initializeTest() {
+    // Hide loading, show test
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('active-test').style.display = 'block';
+    
+    // Initialize test state
+    currentQuestionIndex = 0;
+    userAnswers = new Array(testData.questions.length).fill('');
+    testStartTime = new Date();
+    
+    // Setup timer if needed
+    const config = testConfigs[currentTestType];
+    if (config.hasTimer) {
+        timeRemaining = config.timerDuration;
+        document.getElementById('timer').style.display = 'block';
+        startTimer();
+    }
+    
+    // Initialize question grid
+    initializeQuestionGrid();
+    
+    // Show first question
+    showQuestion(0);
+}
+
+function initializeQuestionGrid() {
+    const grid = document.getElementById('question-grid');
+    grid.innerHTML = '';
+    
+    testData.questions.forEach((_, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-outline-secondary';
+        btn.textContent = index + 1;
+        btn.onclick = () => showQuestion(index);
+        grid.appendChild(btn);
+    });
+}
+
+function showQuestion(index) {
+    currentQuestionIndex = index;
+    
+    // Validate data before proceeding
+    if (!testData || !testData.questions || !testData.questions[index]) {
+        console.error('Invalid test data or question index:', index, testData);
+        alert('Error loading question. Please refresh and try again.');
+        return;
+    }
+    
+    const question = testData.questions[index];
+    const config = testConfigs[currentTestType];
+    
+    // Add smooth transition animations
+    const questionCard = document.querySelector('#active-test .card');
+    if (questionCard) {
+        questionCard.style.opacity = '0.7';
+        questionCard.style.transform = 'scale(0.98)';
+        
+        setTimeout(() => {
+            questionCard.style.transition = 'all 0.3s ease';
+            questionCard.style.opacity = '1';
+            questionCard.style.transform = 'scale(1)';
+        }, 100);
+    }
+    
+    // Update question display with error handling
+    try {
+        const targetWordEl = document.getElementById('target-word');
+        const wordTypeEl = document.getElementById('word-type');
+        const answerEl = document.getElementById('answer');
+        
+        if (targetWordEl) {
+            targetWordEl.style.opacity = '0';
+            setTimeout(() => {
+                targetWordEl.textContent = question.word || question.text || 'Unknown';
+                targetWordEl.style.transition = 'opacity 0.5s ease';
+                targetWordEl.style.opacity = '1';
+            }, 150);
+        }
+        
+        if (wordTypeEl) {
+            wordTypeEl.textContent = question.type || 'Unknown';
+        }
+        
+        if (answerEl) {
+            answerEl.value = userAnswers[index] || '';
+            // Reset answer styling
+            answerEl.style.borderColor = userAnswers[index] ? '#198754' : '#e9ecef';
+            answerEl.style.background = userAnswers[index] 
+                ? 'linear-gradient(135deg, rgba(25,135,84,0.05) 0%, rgba(255,255,255,0.9) 100%)'
+                : 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%)';
+        }
+        
+        console.log('Showing question:', question.word || question.text, 'Type:', question.type);
+    } catch (error) {
+        console.error('Error updating question display:', error);
+    }
+    
+    // Update word info based on test type with premium styling
+    const wordInfo = document.getElementById('word-info');
+    if (config.showDefinitions && question.definition) {
+        // Update word info - compact version
+    const wordInfo = document.getElementById('word-info');
+    if (config.showDefinitions && question.definition) {
+        wordInfo.innerHTML = `
+            <div class="p-2 rounded border bg-light">
+                <div class="mb-2">
+                    <small class="fw-semibold text-primary d-block">
+                        <i class="fas fa-book me-1"></i>Definition
+                    </small>
+                    <small class="text-dark">${question.definition}</small>
+                </div>
+                ${question.example ? `
+                <div>
+                    <small class="fw-semibold text-success d-block">
+                        <i class="fas fa-quote-left me-1"></i>Example
+                    </small>
+                    <small class="text-muted fst-italic">${question.example}</small>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        wordInfo.style.display = 'block';
+    } else {
+        wordInfo.style.display = 'none';
+    }
+        wordInfo.style.display = 'block';
+        wordInfo.style.opacity = '0';
+        setTimeout(() => {
+            wordInfo.style.transition = 'opacity 0.5s ease';
+            wordInfo.style.opacity = '1';
+        }, 200);
+    } else {
+        wordInfo.style.display = 'none';
+    }
+    
+    // Update progress
+    updateProgress();
+    updateQuestionGrid();
+    updateNavigation();
+    checkAnswer();
+}
+
+function updateProgress() {
+    const total = testData.questions.length;
+    const current = currentQuestionIndex + 1;
+    const percentage = Math.round((current / total) * 100);
+    
+    document.getElementById('progress-text').textContent = `Question ${current} of ${total}`;
+    document.getElementById('progress-bar').style.width = `${percentage}%`;
+    document.getElementById('progress-percentage').textContent = `${percentage}%`;
+    
+    // Update summary counts
+    const answered = userAnswers.filter(answer => answer.trim() !== '').length;
+    const remaining = total - answered;
+    const skipped = current - 1 - answered;
+    
+    document.getElementById('answered-count').textContent = answered;
+    document.getElementById('skipped-count').textContent = Math.max(0, skipped);
+    document.getElementById('remaining-count').textContent = remaining;
+}
+
+function updateQuestionGrid() {
+    const buttons = document.querySelectorAll('#question-grid button');
+    buttons.forEach((btn, index) => {
+        btn.className = 'btn btn-outline-secondary';
+        
+        if (index === currentQuestionIndex) {
+            btn.classList.add('current');
+        } else if (userAnswers[index] && userAnswers[index].trim() !== '') {
+            btn.classList.add('answered');
+        } else if (index < currentQuestionIndex) {
+            btn.classList.add('skipped');
+        }
+    });
+}
+
+function updateNavigation() {
+    const isFirst = currentQuestionIndex === 0;
+    const isLast = currentQuestionIndex === testData.questions.length - 1;
+    const hasAnswer = userAnswers[currentQuestionIndex].trim() !== '';
+    
+    document.getElementById('prev-btn').disabled = isFirst;
+    document.getElementById('next-btn').disabled = !hasAnswer && !isLast;
+    document.getElementById('complete-btn').style.display = isLast ? 'inline-block' : 'none';
+    document.getElementById('next-btn').style.display = isLast ? 'none' : 'inline-block';
+}
+
+function checkAnswer() {
+    const answer = document.getElementById('answer').value;
+    const answerEl = document.getElementById('answer');
+    const charCounter = document.getElementById('char-counter');
+    const typingIndicator = document.getElementById('typing-indicator');
+    
+    userAnswers[currentQuestionIndex] = answer;
+    
+    // Premium typing indicator
+    if (answer.length > 0) {
+        typingIndicator.classList.remove('d-none');
+        setTimeout(() => {
+            typingIndicator.classList.add('d-none');
+        }, 1000);
+    }
+    
+    // Compact character counter with color coding
+    const charCount = answer.length;
+    
+    if (charCount === 0) {
+        charCounter.style.color = '#6c757d';
+        charCounter.textContent = '0 chars';
+    } else if (charCount < 10) {
+        charCounter.style.color = '#ffc107';
+        charCounter.innerHTML = `${charCount} chars <i class="fas fa-exclamation-triangle ms-1"></i>`;
+    } else if (charCount >= 10 && charCount <= 150) {
+        charCounter.style.color = '#198754';
+        charCounter.innerHTML = `${charCount} chars <i class="fas fa-check-circle ms-1"></i>`;
+    } else {
+        charCounter.style.color = '#dc3545';
+        charCounter.innerHTML = `${charCount} chars <i class="fas fa-info-circle ms-1"></i>`;
+    }
+    
+    // Premium textarea styling based on content
+    if (answer.trim().length > 0) {
+        answerEl.style.borderColor = '#198754';
+        answerEl.style.background = 'linear-gradient(135deg, rgba(25,135,84,0.05) 0%, rgba(255,255,255,0.9) 100%)';
+    } else {
+        answerEl.style.borderColor = '#e9ecef';
+        answerEl.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%)';
+    }
+    
+    updateProgress();
+    updateQuestionGrid();
+    updateNavigation();
+}
+
+function nextQuestion() {
+    if (currentQuestionIndex < testData.questions.length - 1) {
+        showQuestion(currentQuestionIndex + 1);
+    }
+}
+
+function previousQuestion() {
+    if (currentQuestionIndex > 0) {
+        showQuestion(currentQuestionIndex - 1);
+    }
+}
+
+function skipQuestion() {
+    if (currentQuestionIndex < testData.questions.length - 1) {
+        nextQuestion();
+    } else {
+        completeTest();
+    }
+}
+
+function completeTest() {
+    // Stop timer
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    
+    // Hide test, show completion
+    document.getElementById('active-test').style.display = 'none';
+    document.getElementById('timer').style.display = 'none';
+    showTestCompleted();
+}
+
+function showTestCompleted() {
+    const answered = userAnswers.filter(answer => answer.trim() !== '').length;
+    const total = testData.questions.length;
+    const completionRate = Math.round((answered / total) * 100);
+    const timeTaken = testStartTime ? Math.round((new Date() - testStartTime) / 1000) : 0;
+    
+    // Update statistics
+    document.getElementById('final-answered').textContent = answered;
+    document.getElementById('final-completion').textContent = `${completionRate}%`;
+    document.getElementById('final-time').textContent = formatTime(timeTaken);
+    
+    document.getElementById('test-completed').style.display = 'block';
+}
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        document.getElementById('timer-display').textContent = formatTime(timeRemaining);
+        
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            completeTest();
+        }
+    }, 1000);
+}
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+function downloadResults() {
+    const results = {
+        test_type: currentTestType,
+        timestamp: new Date().toISOString(),
+        questions: testData.questions.map((q, i) => ({
+            question_id: q.id,
+            word: q.word,
+            word_type: q.type,
+            user_answer: userAnswers[i],
+            definition: q.definition,
+            example: q.example
+        })),
+        metadata: {
+            total_questions: testData.questions.length,
+            answered_questions: userAnswers.filter(a => a.trim() !== '').length,
+            test_duration: testStartTime ? Math.round((new Date() - testStartTime) / 1000) : 0
+        }
+    };
+    
+    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentTestType}_test_results_${new Date().toISOString().slice(0, 19)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function showEvaluationSection() {
+    // Hide all other sections
+    document.getElementById('test-selection').style.display = 'none';
+    document.getElementById('test-completed').style.display = 'none';
+    document.getElementById('active-test').style.display = 'none';
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('pre-test').style.display = 'none';
+    
+    // Show evaluation section
+    document.getElementById('evaluation-section').style.display = 'block';
+    
+    // Hide header evaluate button when in evaluation mode
+    document.getElementById('eval-header-btn').style.display = 'none';
+    
+    // Update upload description
+    const description = currentTestType 
+        ? (currentTestType === 'mastery' 
+            ? 'Upload your evaluation JSON file to view detailed results and update mastery levels'
+            : 'Upload your evaluation JSON file to view detailed results')
+        : 'Upload any previous test evaluation JSON file to process results and update mastery levels';
+    document.getElementById('upload-description').textContent = description;
+}
+
+function hideEvaluationSection() {
+    document.getElementById('evaluation-section').style.display = 'none';
+    
+    // Show the appropriate section - if there's a completed test, show that, otherwise show selection
+    if (document.getElementById('test-completed').style.display !== 'none') {
+        document.getElementById('test-completed').style.display = 'block';
+    } else {
+        document.getElementById('test-selection').style.display = 'block';
+    }
+    
+    // Show header evaluate button again
+    document.getElementById('eval-header-btn').style.display = 'block';
+}
+
+function restartTest() {
+    // Reset all state
+    currentQuestionIndex = 0;
+    userAnswers = [];
+    testData = null;
+    testStartTime = null;
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    
+    // Hide all sections and show selection
+    document.getElementById('test-completed').style.display = 'none';
+    document.getElementById('evaluation-section').style.display = 'none';
+    document.getElementById('active-test').style.display = 'none';
+    document.getElementById('timer').style.display = 'none';
+    document.getElementById('test-selection').style.display = 'block';
+}
+
+function backToHome() {
+    window.location.href = '/';
+}
+
+function showJSONPaste() {
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('json-paste-section').style.display = 'block';
+}
+
+function hideJSONPaste() {
+    document.getElementById('json-paste-section').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+}
+
+function processJSONText() {
+    const jsonText = document.getElementById('json-textarea').value.trim();
+    if (!jsonText) {
+        alert('Please paste JSON data first.');
+        return;
+    }
+    
+    try {
+        const data = JSON.parse(jsonText);
+        processEvaluationData(data);
+    } catch (error) {
+        alert('Invalid JSON format. Please check your data.');
+    }
+}
+
+// Handle file upload
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('upload-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('json-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file first.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    processEvaluationData(data);
+                } catch (error) {
+                    alert('Invalid JSON file. Please check the file format.');
+                }
+            };
+            reader.readAsText(file);
+        });
+    }
+});
+
+function processEvaluationData(data) {
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('json-paste-section').style.display = 'none';
+    document.getElementById('processing-state').style.display = 'block';
+    
+    // Add test type to data if not present
+    if (!data.test_type && currentTestType) {
+        data.test_type = currentTestType;
+    }
+    
+    // Wrap data in the format expected by the API
+    const requestBody = {
+        action: 'process',
+        data: data
+    };
+    
+    console.log('Sending evaluation request:', requestBody);
+    
+    fetch('/api/evaluation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('Evaluation result:', result);
+        document.getElementById('processing-state').style.display = 'none';
+        
+        if (result.success) {
+            displayResults(result);
+        } else {
+            alert(`Error: ${result.message || 'Unknown error occurred'}`);
+            document.getElementById('upload-section').style.display = 'block';
+        }
+    })
+    .catch(error => {
+        console.error('Error processing evaluation:', error);
+        document.getElementById('processing-state').style.display = 'none';
+        alert(`Error processing evaluation: ${error.message}`);
+        document.getElementById('upload-section').style.display = 'block';
+    });
+}
+
+function displayResults(result) {
+    console.log('Displaying results:', result);
+    
+    // Store result for mastery level updates
+    window.lastEvaluationResult = result;
+    
+    // Check if results-display element exists, create it if not
+    let resultsDiv = document.getElementById('results-display');
+    if (!resultsDiv) {
+        resultsDiv = document.createElement('div');
+        resultsDiv.id = 'results-display';
+        document.getElementById('evaluation-section').appendChild(resultsDiv);
+    }
+    
+    if (!result) {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <h4><i class="fas fa-exclamation-triangle"></i> No Results</h4>
+                <p>No evaluation results received.</p>
+            </div>
+        `;
+    } else if (result.success) {
+        const message = result.message || 'Evaluation completed successfully!';
+        const totalQuestions = result.metadata?.total_questions || 'Unknown';
+        const format = result.format || 'Unknown';
+        
+        resultsDiv.innerHTML = `
+            <div class="alert alert-success">
+                <h4><i class="fas fa-check-circle"></i> Evaluation Complete!</h4>
+                <p><strong>Format:</strong> ${format}</p>
+                <p><strong>Questions Processed:</strong> ${totalQuestions}</p>
+                <p>${message}</p>
+                ${result.can_update_mastery ? 
+                    '<button class="btn btn-primary mt-2" onclick="updateMasteryLevels()">Update Mastery Levels</button>' : 
+                    ''}
+            </div>
+        `;
+    } else {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h4><i class="fas fa-times-circle"></i> Evaluation Failed</h4>
+                <p>${result.message || 'Unknown error occurred'}</p>
+            </div>
+        `;
+    }
+    
+    resultsDiv.style.display = 'block';
+}
+
+function updateMasteryLevels() {
+    // Get the last processed evaluation result
+    if (!window.lastEvaluationResult) {
+        alert('No evaluation data available. Please process evaluation results first.');
+        return;
+    }
+    
+    const threshold = prompt('Enter minimum score threshold for mastery level updates (default: 7):', '7');
+    if (threshold === null) return; // User cancelled
+    
+    const numericThreshold = parseInt(threshold) || 7;
+    
+    // Show processing state
+    const resultsDiv = document.getElementById('results-display');
+    resultsDiv.innerHTML = `
+        <div class="alert alert-info">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+                <div>
+                    <h6 class="mb-1">Updating Mastery Levels...</h6>
+                    <small>Processing evaluation results with threshold: ${numericThreshold}</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Send update request
+    fetch('/api/evaluation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'update_mastery',
+            data: window.lastEvaluationResult,
+            threshold: numericThreshold
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('Mastery update result:', result);
+        
+        if (result.success) {
+            console.log('Mastery update successful, full result:', result);
+            
+            // Look for changes in different possible locations in the response
+            const passedItems = result.passed_items || [];
+            const failedItems = result.failed_items || [];
+            const changes = [...passedItems, ...failedItems];
+            console.log('Passed items:', passedItems);
+            console.log('Failed items:', failedItems);
+            console.log('Combined changes:', changes);
+            
+            // Store changes immediately
+            window.lastMasteryChanges = changes;
+            
+            const totalChanges = changes.length;
+            
+            let changesSummary = '';
+            if (totalChanges > 0) {
+                const increasedCount = changes.filter(c => c.action === 'increased_level').length;
+                const decreasedCount = changes.filter(c => c.action === 'reduced_level').length;
+                const maintainedCount = changes.filter(c => c.action === 'maintained_level' || c.action === 'no_change').length;
+                
+                changesSummary = `
+                    <div class="mt-3">
+                        <h6>Mastery Level Changes:</h6>
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="text-success fw-bold">${increasedCount}</div>
+                                <small>Increased</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-warning fw-bold">${maintainedCount}</div>
+                                <small>Maintained</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-danger fw-bold">${decreasedCount}</div>
+                                <small>Decreased</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                changesSummary = `
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <small><i class="fas fa-info-circle"></i> No mastery level changes were made. This may be because all items maintained their current levels or didn't meet the score thresholds.</small>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h4><i class="fas fa-check-circle"></i> Mastery Levels Updated!</h4>
+                    <p><strong>Total Changes:</strong> ${totalChanges}</p>
+                    <p>${result.message}</p>
+                    ${changesSummary}
+                    <button class="btn btn-outline-primary btn-sm mt-3" onclick="showDetailedChanges()">
+                        <i class="fas fa-list"></i> View Detailed Changes
+                    </button>
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4><i class="fas fa-times-circle"></i> Update Failed</h4>
+                    <p>${result.message || 'Failed to update mastery levels'}</p>
+                    <button class="btn btn-primary mt-2" onclick="updateMasteryLevels()">Try Again</button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error updating mastery levels:', error);
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h4><i class="fas fa-exclamation-triangle"></i> Error</h4>
+                <p>Failed to update mastery levels: ${error.message}</p>
+                <button class="btn btn-primary mt-2" onclick="updateMasteryLevels()">Try Again</button>
+            </div>
+        `;
+    });
+}
+
+function showDetailedChanges() {
+    console.log('showDetailedChanges called');
+    console.log('lastMasteryChanges:', window.lastMasteryChanges);
+    
+    if (!window.lastMasteryChanges || !Array.isArray(window.lastMasteryChanges) || window.lastMasteryChanges.length === 0) {
+        const resultsDiv = document.getElementById('results-display');
+        resultsDiv.innerHTML = `
+            <div class="alert alert-warning">
+                <h5><i class="fas fa-exclamation-triangle"></i> No Detailed Changes Available</h5>
+                <p>No detailed mastery level changes were recorded. This could happen if:</p>
+                <ul>
+                    <li>No items met the score threshold for changes</li>
+                    <li>All items maintained their current mastery levels</li>
+                    <li>The evaluation data didn't include scores</li>
+                </ul>
+                <button class="btn btn-primary" onclick="updateMasteryLevels()">
+                    <i class="fas fa-arrow-left"></i> Back to Update
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    const changes = window.lastMasteryChanges;
+    console.log('Processing changes:', changes);
+    
+    let detailsHtml = `
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Word/Phrase</th>
+                        <th>Type</th>
+                        <th>Score</th>
+                        <th>Action</th>
+                        <th>Old Level</th>
+                        <th>New Level</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    changes.forEach((change, index) => {
+        console.log(`Processing change ${index}:`, change);
+        const actionColor = change.action === 'increased_level' ? 'success' : 
+                           change.action === 'reduced_level' ? 'danger' : 'warning';
+        detailsHtml += `
+            <tr>
+                <td><strong>${change.word || change.target_word || 'Unknown'}</strong></td>
+                <td><span class="badge bg-secondary">${change.word_type || change.item_type || 'Unknown'}</span></td>
+                <td><span class="badge bg-info">${change.score !== undefined ? change.score : 'N/A'}</span></td>
+                <td><span class="badge bg-${actionColor}">${change.action || 'Unknown'}</span></td>
+                <td><span class="badge bg-secondary">${change.old_level !== undefined ? change.old_level : 'N/A'}</span></td>
+                <td><span class="badge bg-primary">${change.new_level !== undefined ? change.new_level : 'N/A'}</span></td>
+            </tr>
+        `;
+    });
+    
+    detailsHtml += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    const resultsDiv = document.getElementById('results-display');
+    resultsDiv.innerHTML = `
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-list"></i> Detailed Mastery Changes</h5>
+                <button class="btn btn-outline-secondary btn-sm" onclick="updateMasteryLevels()">
+                    <i class="fas fa-arrow-left"></i> Back to Summary
+                </button>
+            </div>
+            <div class="card-body">
+                ${detailsHtml}
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

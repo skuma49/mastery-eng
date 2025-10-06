@@ -2,14 +2,822 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import random
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Unified Test Configuration Classes
+class TestConfiguration:
+    """Configuration class for different test types"""
+    
+    REGULAR_TEST = {
+        'name': 'regular',
+        'mastery_levels': [2, 3, 4],  # Exclude mastered (5) and unlearned (0-1)
+        'question_distribution': {'idioms': 0.4, 'vocabulary': 0.3, 'phrasal_verbs': 0.3},
+        'max_questions': 10,
+        'has_timer': True,
+        'timer_duration': 600,  # 10 minutes
+        'show_definitions': True,
+        'show_examples': True,
+        'test_format': 'mixed_practice'
+    }
+    
+    MASTERY_TEST = {
+        'name': 'mastery',
+        'mastery_levels': [5],  # Only mastered items
+        'question_distribution': {'idioms': 0.33, 'vocabulary': 0.33, 'phrasal_verbs': 0.34},
+        'max_questions': 10,
+        'has_timer': False,
+        'timer_duration': None,
+        'show_definitions': False,
+        'show_examples': False,
+        'test_format': 'sentence_writing'
+    }
+    
+    @classmethod
+    def get_config(cls, test_type):
+        """Get configuration for specified test type"""
+        configs = {
+            'regular': cls.REGULAR_TEST,
+            'mastery': cls.MASTERY_TEST
+        }
+        return configs.get(test_type, cls.REGULAR_TEST)
+
+class UnifiedTestManager:
+    """Unified test management class"""
+    
+    def __init__(self, test_type='regular'):
+        self.config = TestConfiguration.get_config(test_type)
+        self.test_type = test_type
+    
+    def get_available_items(self):
+        """Get items based on test type mastery level requirements"""
+        mastery_levels = self.config['mastery_levels']
+        
+        # Query items by mastery level
+        vocab_items = VocabularyWord.query.filter(
+            VocabularyWord.mastery_level.in_(mastery_levels)
+        ).all()
+        
+        phrasal_items = PhrasalVerb.query.filter(
+            PhrasalVerb.mastery_level.in_(mastery_levels)
+        ).all()
+        
+        idiom_items = Idiom.query.filter(
+            Idiom.mastery_level.in_(mastery_levels)
+        ).all()
+        
+        return {
+            'vocabulary': vocab_items,
+            'phrasal_verbs': phrasal_items,
+            'idioms': idiom_items
+        }
+    
+    def calculate_question_distribution(self, available_items):
+        """Calculate how many questions of each type to include"""
+        total_available = sum(len(items) for items in available_items.values())
+        
+        if total_available == 0:
+            return {'vocabulary': 0, 'phrasal_verbs': 0, 'idioms': 0}
+        
+        max_questions = min(self.config['max_questions'], total_available)
+        distribution = self.config['question_distribution']
+        
+        # Calculate initial counts
+        counts = {}
+        for category, ratio in distribution.items():
+            available_count = len(available_items.get(category, []))
+            ideal_count = int(max_questions * ratio)
+            counts[category] = min(available_count, max(1 if available_count > 0 else 0, ideal_count))
+        
+        # Adjust if we have fewer total questions than max
+        total_selected = sum(counts.values())
+        remaining = max_questions - total_selected
+        
+        # Distribute remaining questions to categories with availability
+        for category in counts:
+            if remaining <= 0:
+                break
+            available_count = len(available_items.get(category, []))
+            current_count = counts[category]
+            additional = min(remaining, available_count - current_count)
+            if additional > 0:
+                counts[category] += additional
+                remaining -= additional
+        
+        return counts
+    
+    def generate_questions(self):
+        """Generate questions based on test configuration"""
+        available_items = self.get_available_items()
+        question_counts = self.calculate_question_distribution(available_items)
+        
+        total_available = sum(len(items) for items in available_items.values())
+        if total_available == 0:
+            return {
+                'success': False,
+                'message': self.get_no_items_message(),
+                'questions': []
+            }
+        
+        selected_questions = []
+        
+        # Generate questions for each category
+        for category, count in question_counts.items():
+            if count > 0 and available_items[category]:
+                items = random.sample(available_items[category], count)
+                for item in items:
+                    question = self.create_question_from_item(item, category)
+                    selected_questions.append(question)
+        
+        # Shuffle questions
+        random.shuffle(selected_questions)
+        
+        return {
+            'success': True,
+            'questions': selected_questions,
+            'total_questions': len(selected_questions),
+            'test_config': self.config,
+            'available_stats': {
+                'vocabulary': len(available_items['vocabulary']),
+                'phrasal_verbs': len(available_items['phrasal_verbs']),
+                'idioms': len(available_items['idioms'])
+            }
+        }
+    
+    def create_question_from_item(self, item, category):
+        """Create a question object from a database item"""
+        base_question = {
+            'id': item.id,
+            'type': category.rstrip('s'),  # Remove 's' from category name
+            'category': category,
+            'difficulty_level': getattr(item, 'difficulty_level', 'medium'),
+            'mastery_level': getattr(item, 'mastery_level', 0)
+        }
+        
+        if category == 'vocabulary':
+            base_question.update({
+                'text': item.word,
+                'word': item.word,
+                'meaning': item.definition if self.config['show_definitions'] else None,
+                'definition': item.definition if self.config['show_definitions'] else None,
+                'part_of_speech': getattr(item, 'part_of_speech', None),
+                'pronunciation': getattr(item, 'pronunciation', None),
+                'example': item.example_sentence if self.config['show_examples'] else None
+            })
+        elif category == 'phrasal_verbs':
+            base_question.update({
+                'text': item.phrasal_verb,
+                'word': item.phrasal_verb,
+                'meaning': item.meaning if self.config['show_definitions'] else None,
+                'separable': getattr(item, 'separable', False),
+                'example': item.example_sentence if self.config['show_examples'] else None
+            })
+        elif category == 'idioms':
+            base_question.update({
+                'text': item.idiom,
+                'word': item.idiom,
+                'meaning': item.meaning if self.config['show_definitions'] else None,
+                'origin': getattr(item, 'origin', None),
+                'example': item.example_sentence if self.config['show_examples'] else None
+            })
+        
+        # Add test-specific question format
+        if self.test_type == 'mastery':
+            base_question.update({
+                'format': 'sentence_writing',
+                'question': f"Write a creative sentence using '{base_question['text']}'",
+                'instructions': self.get_mastery_instructions(base_question)
+            })
+        
+        return base_question
+    
+    def get_mastery_instructions(self, question):
+        """Get instructions for mastery test questions"""
+        word_type = question['type']
+        word = question['text']
+        
+        instructions = f"Create an original sentence that demonstrates your understanding of '{word}'"
+        
+        if word_type == 'phrasal_verb' and question.get('separable') is not None:
+            sep_text = "separable" if question['separable'] else "inseparable"
+            instructions += f" (Note: This is a {sep_text} phrasal verb)"
+        
+        return instructions
+    
+    def get_no_items_message(self):
+        """Get appropriate message when no items are available"""
+        if self.test_type == 'mastery':
+            return 'No mastered words found for testing. Master some words first!'
+        else:
+            return 'No items with appropriate mastery levels found. Practice more to unlock tests!'
+    
+    def process_submission(self, submission_data):
+        """Process test submission and create result data"""
+        responses = submission_data.get('responses', [])
+        
+        # Create metadata
+        metadata = {
+            'test_date': datetime.utcnow().isoformat(),
+            'test_type': self.config['test_format'],
+            'total_questions': len(responses),
+            'test_config': self.test_type,
+            'user_id': 'anonymous',  # Can be enhanced with user system
+            'test_version': '2.0'
+        }
+        
+        if self.test_type == 'regular':
+            return self.process_regular_submission(responses, metadata)
+        else:
+            return self.process_mastery_submission(responses, metadata)
+    
+    def process_regular_submission(self, responses, metadata):
+        """Process regular test submission"""
+        test_result = {
+            'test_date': metadata['test_date'],
+            'duration_minutes': 10,
+            'total_questions': metadata['total_questions'],
+            'responses': responses
+        }
+        
+        return {
+            'success': True,
+            'message': 'Test completed successfully!',
+            'result': test_result,
+            'download_filename': f'mastery-english-test-{datetime.now().strftime("%Y%m%d-%H%M%S")}.json'
+        }
+    
+    def process_mastery_submission(self, responses, metadata):
+        """Process mastery test submission with detailed evaluation format"""
+        # Create comprehensive evaluation format
+        questions_and_responses = []
+        
+        for response in responses:
+            item_id = response.get('id')
+            item_type = response.get('type')
+            user_sentence = response.get('user_sentence', '')
+            
+            # Get item details from database
+            item = self.get_item_by_id_and_type(item_id, item_type)
+            
+            if item:
+                target_word, definition_or_meaning = self.extract_item_details(item, item_type)
+                
+                question_data = {
+                    'question_id': item_id,
+                    'word_type': item_type,
+                    'target_word': target_word,
+                    'user_sentence': user_sentence,
+                    'word_details': {
+                        'definition_or_meaning': definition_or_meaning,
+                        'part_of_speech': getattr(item, 'part_of_speech', None),
+                        'difficulty_level': item.difficulty_level,
+                        'original_example': getattr(item, 'example_sentence', ''),
+                        'pronunciation': getattr(item, 'pronunciation', None),
+                        'separable': getattr(item, 'separable', None),
+                        'origin': getattr(item, 'origin', None)
+                    },
+                    'evaluation_criteria': {
+                        'word_used_correctly': None,
+                        'demonstrates_understanding': None,
+                        'grammar_correct': None,
+                        'creative_usage': None,
+                        'overall_score': None,
+                        'evaluator_comments': None
+                    }
+                }
+                questions_and_responses.append(question_data)
+        
+        test_result = {
+            'test_metadata': metadata,
+            'questions_and_responses': questions_and_responses
+        }
+        
+        return {
+            'success': True,
+            'message': 'Advanced test completed! Download JSON for external evaluation.',
+            'test_result': test_result,
+            'download_filename': f'mastery-test-{datetime.now().strftime("%Y%m%d-%H%M%S")}.json'
+        }
+    
+    def get_item_by_id_and_type(self, item_id, item_type):
+        """Get database item by ID and type"""
+        if item_type == 'vocabulary':
+            return db.session.get(VocabularyWord, item_id)
+        elif item_type == 'phrasal_verb':
+            return db.session.get(PhrasalVerb, item_id)
+        elif item_type == 'idiom':
+            return db.session.get(Idiom, item_id)
+        return None
+    
+    def extract_item_details(self, item, item_type):
+        """Extract target word and definition from item"""
+        if item_type == 'vocabulary':
+            return item.word, item.definition
+        elif item_type == 'phrasal_verb':
+            return item.phrasal_verb, item.meaning
+        elif item_type == 'idiom':
+            return item.idiom, item.meaning
+        return '', ''
+
+class UnifiedEvaluationManager:
+    """Unified evaluation management for all test types"""
+    
+    def __init__(self):
+        self.supported_formats = ['regular_test', 'mastery_test', 'mixed']
+    
+    def detect_evaluation_format(self, data):
+        """Detect the format of evaluation data"""
+        print(f"Debug: Detecting format for data type: {type(data)}")
+        if isinstance(data, dict):
+            print(f"Debug: Data keys: {list(data.keys())}")
+            print(f"Debug: Has summary: {'summary' in data}")
+            print(f"Debug: Has details: {'details' in data}")
+        
+        if 'test_metadata' in data and 'questions_and_responses' in data:
+            print("Debug: Detected mastery_test format")
+            return 'mastery_test'
+        elif 'responses' in data and isinstance(data['responses'], list):
+            print("Debug: Detected regular_test format")
+            return 'regular_test'
+        elif 'evaluated_results' in data:
+            print("Debug: Detected external_evaluation format")
+            return 'external_evaluation'
+        elif ('summary' in data or 'evaluation_summary' in data) and 'details' in data:
+            print("Debug: Found summary/evaluation_summary and details - returning evaluation_report")
+            return 'evaluation_report'
+        elif isinstance(data, dict) and any(key in data for key in ['Test Date', 'Duration (minutes)', 'Total Questions', 'overall_score', 'total_questions']):
+            print("Debug: Detected evaluation_report by summary keys")
+            return 'evaluation_report'
+        elif 'test_type' in data and 'questions' in data and 'metadata' in data:
+            print("Debug: Detected raw_test_results format")
+            return 'raw_test_results'
+        else:
+            print(f"Debug: Unknown format for data: {data}")
+            return 'unknown'
+    
+    def process_evaluation_upload(self, data):
+        """Process uploaded evaluation data and return standardized format"""
+        eval_format = self.detect_evaluation_format(data)
+        
+        if eval_format == 'mastery_test':
+            return self.process_mastery_evaluation(data)
+        elif eval_format == 'regular_test':
+            return self.process_regular_evaluation(data)
+        elif eval_format == 'external_evaluation':
+            return self.process_external_evaluation(data)
+        elif eval_format == 'evaluation_report':
+            return self.process_evaluation_report(data)
+        elif eval_format == 'raw_test_results':
+            return self.process_raw_test_results(data)
+        else:
+            print(f"Debug: Unsupported format '{eval_format}' for data: {data}")
+            raise ValueError(f"Unsupported evaluation format: {eval_format}")
+    
+    def process_mastery_evaluation(self, data):
+        """Process mastery test evaluation data"""
+        metadata = data.get('test_metadata', {})
+        questions = data.get('questions_and_responses', [])
+        
+        processed_results = []
+        for question in questions:
+            result = {
+                'question_id': question.get('question_id'),
+                'test_type': 'mastery',
+                'word_type': question.get('word_type'),
+                'target_word': question.get('target_word'),
+                'user_response': question.get('user_sentence', ''),
+                'word_details': question.get('word_details', {}),
+                'evaluation': question.get('evaluation_criteria', {}),
+                'has_evaluation': any(v is not None for v in question.get('evaluation_criteria', {}).values())
+            }
+            processed_results.append(result)
+        
+        return {
+            'success': True,
+            'format': 'mastery_test',
+            'metadata': {
+                'test_date': metadata.get('test_date'),
+                'test_type': metadata.get('test_type', 'mastery'),
+                'total_questions': len(processed_results),
+                'test_version': metadata.get('test_version', '1.0')
+            },
+            'results': processed_results,
+            'can_update_mastery': True,
+            'evaluation_complete': any(r['has_evaluation'] for r in processed_results)
+        }
+    
+    def process_regular_evaluation(self, data):
+        """Process regular test evaluation data"""
+        responses = data.get('responses', [])
+        
+        processed_results = []
+        for i, response in enumerate(responses):
+            result = {
+                'question_id': response.get('id', i),
+                'test_type': 'regular',
+                'word_type': response.get('type'),
+                'target_word': response.get('text'),
+                'user_response': response.get('user_sentence', ''),
+                'word_details': {
+                    'definition_or_meaning': response.get('meaning', ''),
+                    'example_sentence': response.get('example_sentence', '')
+                },
+                'evaluation': {},
+                'has_evaluation': False
+            }
+            processed_results.append(result)
+        
+        return {
+            'success': True,
+            'format': 'regular_test',
+            'metadata': {
+                'test_date': data.get('test_date'),
+                'test_type': 'regular',
+                'total_questions': len(processed_results),
+                'duration_minutes': data.get('duration_minutes', 10)
+            },
+            'results': processed_results,
+            'can_update_mastery': False,
+            'evaluation_complete': False
+        }
+    
+    def process_external_evaluation(self, data):
+        """Process external evaluation results"""
+        evaluated_results = data.get('evaluated_results', [])
+        
+        processed_results = []
+        for result in evaluated_results:
+            evaluation = result.get('evaluation_criteria', {})
+            processed_result = {
+                'question_id': result.get('question_id'),
+                'test_type': 'mastery',
+                'word_type': result.get('word_type'),
+                'target_word': result.get('target_word', ''),
+                'user_response': result.get('user_sentence', ''),
+                'word_details': result.get('word_details', {}),
+                'evaluation': evaluation,
+                'has_evaluation': True
+            }
+            processed_results.append(processed_result)
+        
+        return {
+            'success': True,
+            'format': 'external_evaluation',
+            'metadata': {
+                'test_type': 'mastery',
+                'total_questions': len(processed_results),
+                'evaluation_date': datetime.utcnow().isoformat()
+            },
+            'results': processed_results,
+            'can_update_mastery': True,
+            'evaluation_complete': True
+        }
+    
+    def find_item_id_by_word(self, word_phrase, word_type):
+        """Find the database ID of an item by its word/phrase and type"""
+        try:
+            if word_type == 'vocabulary':
+                item = VocabularyWord.query.filter_by(word=word_phrase).first()
+            elif word_type == 'phrasal_verb':
+                item = PhrasalVerb.query.filter_by(phrasal_verb=word_phrase).first()
+            elif word_type == 'idiom':
+                item = Idiom.query.filter_by(idiom=word_phrase).first()
+            else:
+                return None
+            
+            return item.id if item else None
+        except Exception as e:
+            print(f"Error finding item by word '{word_phrase}' of type '{word_type}': {e}")
+            return None
+
+    def process_evaluation_report(self, data):
+        """Process evaluation report format with summary and details"""
+        processed_results = []
+        
+        # Extract results from details section
+        details = data.get('details', {})
+        
+        # Handle case where details might be a list or dict
+        if isinstance(details, list):
+            # If details is a list, process each item directly
+            for item in details:
+                # Map the actual JSON field names to our expected format
+                word_phrase = item.get('Word/Phrase', item.get('word', ''))
+                user_answer = item.get('User Answer', item.get('user_answer', ''))
+                score = item.get('Score', item.get('score', 0))
+                feedback = item.get('Feedback', item.get('feedback', ''))
+                word_type = item.get('Type', item.get('type', 'vocabulary')).lower()
+                question_num = item.get('Question #', item.get('question_id', ''))
+                
+                # Find the actual database ID using word name and type
+                actual_question_id = self.find_item_id_by_word(word_phrase, word_type)
+                if actual_question_id is None:
+                    print(f"Warning: Could not find database ID for '{word_phrase}' of type '{word_type}'")
+                    actual_question_id = question_num  # Fallback to question number
+                
+                processed_result = {
+                    'question_id': actual_question_id,
+                    'test_type': 'evaluation_report',
+                    'word_type': word_type,
+                    'target_word': word_phrase,
+                    'user_response': user_answer,
+                    'word_details': {
+                        'word': word_phrase,
+                        'definition': '',  # Not provided in this format
+                        'feedback': feedback
+                    },
+                    'evaluation': {
+                        'correct': score >= 7,  # Consider score >= 7 as correct
+                        'score': score,
+                        'feedback': feedback
+                    },
+                    'has_evaluation': True,
+                    'category': word_type
+                }
+                processed_results.append(processed_result)
+        elif isinstance(details, dict):
+            # Process each category in details if it's a dictionary
+            for category, category_data in details.items():
+                if isinstance(category_data, dict) and 'results' in category_data:
+                    for item in category_data['results']:
+                        processed_result = {
+                            'question_id': item.get('question_id'),
+                            'test_type': 'evaluation_report',
+                            'word_type': category,
+                            'target_word': item.get('word', ''),
+                            'user_response': item.get('user_answer', ''),
+                            'word_details': {
+                                'word': item.get('word', ''),
+                                'definition': item.get('correct_answer', '')
+                            },
+                            'evaluation': {
+                                'correct': item.get('correct', False),
+                                'score': 1 if item.get('correct', False) else 0
+                            },
+                            'has_evaluation': True,
+                            'category': category
+                        }
+                        processed_results.append(processed_result)
+                elif isinstance(category_data, list):
+                    # Handle case where category contains a list of results
+                    for item in category_data:
+                        # Map the actual JSON field names to our expected format
+                        word_phrase = item.get('Word/Phrase', item.get('word', ''))
+                        user_answer = item.get('User Answer', item.get('user_answer', ''))
+                        score = item.get('Score', item.get('score', 0))
+                        feedback = item.get('Feedback', item.get('feedback', ''))
+                        word_type = item.get('Type', item.get('type', category)).lower()
+                        question_num = item.get('Question #', item.get('question_id', ''))
+                        
+                        processed_result = {
+                            'question_id': question_num,
+                            'test_type': 'evaluation_report',
+                            'word_type': word_type,
+                            'target_word': word_phrase,
+                            'user_response': user_answer,
+                            'word_details': {
+                                'word': word_phrase,
+                                'definition': '',  # Not provided in this format
+                                'feedback': feedback
+                            },
+                            'evaluation': {
+                                'correct': score >= 7,  # Consider score >= 7 as correct
+                                'score': score,
+                                'feedback': feedback
+                            },
+                            'has_evaluation': True,
+                            'category': word_type
+                        }
+                        processed_results.append(processed_result)
+        
+        # Extract summary information if available
+        summary = data.get('summary', {})
+        if not summary and 'evaluation_summary' in data:
+            summary = {'evaluation_summary': data.get('evaluation_summary')}
+        
+        # Add overall score and total questions if available
+        if 'overall_score' in data:
+            summary['overall_score'] = data['overall_score']
+        if 'total_questions' in data:
+            summary['total_questions'] = data['total_questions']
+        
+        return {
+            'success': True,
+            'format': 'evaluation_report',
+            'metadata': {
+                'test_type': 'evaluation_report',
+                'total_questions': len(processed_results),
+                'evaluation_date': datetime.utcnow().isoformat(),
+                'summary': summary
+            },
+            'results': processed_results,
+            'can_update_mastery': True,
+            'evaluation_complete': True
+        }
+    
+    def process_raw_test_results(self, data):
+        """Process raw test results format (what gets downloaded from tests)"""
+        processed_results = []
+        
+        # Extract questions from the raw format
+        questions = data.get('questions', [])
+        metadata = data.get('metadata', {})
+        
+        for question in questions:
+            # Get current mastery level from database
+            question_id = question.get('question_id', '')
+            word_type = question.get('word_type', 'vocabulary')
+            
+            # Fetch current database item to get actual mastery level
+            current_item = self.get_item_by_id_and_type(question_id, word_type)
+            current_mastery_level = current_item.mastery_level if current_item else 0
+            
+            # Map the raw test format to our expected format
+            processed_result = {
+                'question_id': question_id,
+                'test_type': data.get('test_type', 'regular'),
+                'word_type': word_type,
+                'target_word': question.get('word', ''),
+                'user_response': question.get('user_answer', ''),
+                'word_details': {
+                    'word': question.get('word', ''),
+                    'definition': question.get('definition', ''),
+                    'example': question.get('example', '')
+                },
+                'evaluation': {
+                    'correct': None,  # Not evaluated yet
+                    'score': None,
+                    'feedback': 'Awaiting evaluation'
+                },
+                'has_evaluation': False,
+                'category': word_type,
+                'current_mastery_level': current_mastery_level  # Add current level for reference
+            }
+            processed_results.append(processed_result)
+        
+        return {
+            'success': True,
+            'format': 'raw_test_results',
+            'metadata': {
+                'test_type': data.get('test_type', 'regular'),
+                'total_questions': len(processed_results),
+                'answered_questions': metadata.get('answered_questions', 0),
+                'test_duration': metadata.get('test_duration', 0),
+                'evaluation_date': datetime.utcnow().isoformat()
+            },
+            'results': processed_results,
+            'can_update_mastery': False,  # Raw results need evaluation first
+            'evaluation_complete': False,
+            'message': 'Raw test results uploaded successfully. Evaluation is required before mastery levels can be updated.'
+        }
+    
+    def update_mastery_levels(self, processed_data, threshold=None):
+        """Update mastery levels based on evaluation results using configurable thresholds"""
+        if not processed_data.get('can_update_mastery'):
+            return {
+                'success': False,
+                'message': 'This test type does not support mastery level updates'
+            }
+        
+        if not processed_data.get('evaluation_complete'):
+            return {
+                'success': False,
+                'message': 'Evaluation not complete. Cannot update mastery levels.'
+            }
+        
+        # Load configuration from environment variables
+        excellent_threshold = int(os.getenv('MASTERY_EXCELLENT_THRESHOLD', 7))
+        poor_threshold = int(os.getenv('MASTERY_POOR_THRESHOLD', 3))
+        excellent_action = os.getenv('MASTERY_EXCELLENT_ACTION', 'increase')
+        poor_action = os.getenv('MASTERY_POOR_ACTION', 'decrease')
+        medium_action = os.getenv('MASTERY_MEDIUM_ACTION', 'maintain')
+        
+        updated_items = []
+        failed_items = []
+        
+        for result in processed_data['results']:
+            evaluation = result.get('evaluation', {})
+            score = evaluation.get('score', evaluation.get('overall_score', 0))
+            
+            item_id = result.get('question_id')
+            item_type = result.get('word_type')
+            target_word = result.get('target_word')
+            
+            item = self.get_item_by_id_and_type(item_id, item_type)
+            if not item:
+                continue
+                
+            old_level = item.mastery_level
+            new_level = old_level
+            action = 'no_change'
+            message = f'Level maintained at {old_level}'
+            
+            # Apply configurable mastery level logic based on score ranges
+            if score > excellent_threshold and excellent_action == 'increase':
+                # Increase mastery level by 1 (maximum 10)
+                new_level = min(10, old_level + 1)
+                action = 'increased_level'
+                message = f'Level increased from {old_level} to {new_level} (score: {score})'
+                
+            elif score < poor_threshold and poor_action == 'decrease':
+                # Reduce mastery level by 1 (minimum 0)
+                new_level = max(0, old_level - 1)
+                action = 'reduced_level'
+                message = f'Level reduced from {old_level} to {new_level} (score: {score})'
+                
+            elif poor_threshold <= score <= excellent_threshold and medium_action == 'maintain':
+                # Maintain current level (no change)
+                action = 'maintained_level'
+                message = f'Level maintained at {old_level} (score: {score})'
+            
+            # Update the item if level changed
+            if new_level != old_level:
+                item.mastery_level = new_level
+                if new_level == 0:
+                    item.times_practiced = 0
+                    item.last_practiced = None
+                
+                try:
+                    db.session.commit()
+                    updated_items.append({
+                        'id': item_id,
+                        'word_type': item_type,
+                        'word': target_word,
+                        'action': action,
+                        'old_level': old_level,
+                        'new_level': new_level,
+                        'score': score,
+                        'message': message
+                    })
+                except Exception as e:
+                    db.session.rollback()
+                    failed_items.append({
+                        'id': item_id,
+                        'word_type': item_type,
+                        'word': target_word,
+                        'action': 'failed',
+                        'old_level': old_level,
+                        'new_level': old_level,
+                        'score': score,
+                        'error': str(e),
+                        'message': f'Failed to update: {str(e)}'
+                    })
+                    print(f"Error updating item {item_id}: {e}")
+            else:
+                # Item level maintained
+                updated_items.append({
+                    'id': item_id,
+                    'word_type': item_type,
+                    'word': target_word,
+                    'action': action,
+                    'score': score,
+                    'old_level': old_level,
+                    'new_level': new_level,
+                    'message': message
+                })
+        
+        updated_count = len(updated_items)
+        failed_count = len(failed_items)
+        total_questions = len(processed_data['results'])
+        
+        # Count different types of changes
+        increased = len([item for item in updated_items if item['action'] == 'increased_level'])
+        decreased = len([item for item in updated_items if item['action'] == 'reduced_level'])
+        maintained = len([item for item in updated_items if item['action'] in ['maintained_level', 'no_change']])
+        
+        return {
+            'success': True,
+            'message': f'Processed {total_questions} items: {increased} increased, {decreased} decreased, {maintained} maintained, {failed_count} failed',
+            'changes': updated_items,  # Use 'changes' key for frontend compatibility
+            'passed_items': updated_items,  # Keep for backward compatibility
+            'failed_items': failed_items,
+            'statistics': {
+                'total_questions': total_questions,
+                'updated_count': updated_count,
+                'failed_count': failed_count,
+                'increased_count': increased,
+                'decreased_count': decreased,
+                'maintained_count': maintained
+            }
+        }
+    
+    def get_item_by_id_and_type(self, item_id, item_type):
+        """Get database item by ID and type"""
+        if item_type == 'vocabulary':
+            return db.session.get(VocabularyWord, item_id)
+        elif item_type == 'phrasal_verb':
+            return db.session.get(PhrasalVerb, item_id)
+        elif item_type == 'idiom':
+            return db.session.get(Idiom, item_id)
+        return None
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-secret-key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vocabulary_app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Mastery level configuration
-MASTERY_SCORE_THRESHOLD = 8  # Configurable threshold for increasing mastery level
 
 db = SQLAlchemy(app)
 
@@ -682,13 +1490,78 @@ def progress():
 
 @app.route('/test')
 def test():
-    """10-minute test with sentence creation"""
-    return render_template('test.html')
+    """Unified test center - combines test taking and results evaluation in one interface"""
+    return render_template('unified_test_center.html')
 
-@app.route('/evaluation-results')
-def evaluation_results():
-    """Display evaluation results with JSON upload functionality"""
-    return render_template('evaluation_results.html')
+@app.route('/results')
+def results():
+    """Redirect to unified test center with evaluation mode"""
+    test_type = request.args.get('type', 'regular')
+    return redirect(url_for('test', evaluation=True, type=test_type))
+
+@app.route('/test-center')
+def test_center():
+    """Alternative route name for the unified test center"""
+    return render_template('unified_test_center.html')
+
+@app.route('/api/evaluation', methods=['POST'])
+def unified_evaluation_api():
+    """
+    Unified evaluation API that handles all evaluation types
+    
+    POST /api/evaluation - Process evaluation data
+    
+    Body:
+    {
+        "action": "process|update_mastery", 
+        "data": {...evaluation data...},
+        "threshold": 70 (optional, for mastery updates)
+    }
+    """
+    try:
+        request_data = request.get_json()
+        action = request_data.get('action', 'process')
+        evaluation_data = request_data.get('data', {})
+        
+        manager = UnifiedEvaluationManager()
+        
+        if action == 'process':
+            # Process and standardize the evaluation data
+            result = manager.process_evaluation_upload(evaluation_data)
+            return jsonify(result)
+            
+        elif action == 'update_mastery':
+            # Check if data is already processed or needs processing
+            if evaluation_data.get('success') and evaluation_data.get('results'):
+                # Data is already processed
+                processed_data = evaluation_data
+            else:
+                # Data needs processing
+                processed_data = manager.process_evaluation_upload(evaluation_data)
+                
+            if processed_data.get('success'):
+                threshold = request_data.get('threshold', 7)
+                update_result = manager.update_mastery_levels(processed_data, threshold)
+                return jsonify(update_result)
+            else:
+                return jsonify(processed_data), 400
+                
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Unsupported action: {action}'
+            }), 400
+            
+    except Exception as e:
+        print(f"Error in unified evaluation API: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error processing evaluation: {str(e)}'
+        }), 500
+
+# Unified test functionality now handled directly by /test route
 
 @app.route('/api/process-mastery-levels', methods=['POST'])
 def process_mastery_levels():
@@ -812,22 +1685,102 @@ def process_mastery_levels():
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error processing mastery levels: {str(e)}'}), 500
 
-@app.route('/api/generate-test', methods=['POST'])
-def generate_test():
-    """Generate test questions based on mastery level 2-4 (exclude mastered level 5)"""
-    # Get items with mastery level 2-4 (exclude mastered level 5)
-    vocab_items = VocabularyWord.query.filter(
-        VocabularyWord.mastery_level >= 2,
-        VocabularyWord.mastery_level < 5
-    ).all()
-    phrasal_items = PhrasalVerb.query.filter(
-        PhrasalVerb.mastery_level >= 2,
-        PhrasalVerb.mastery_level < 5
-    ).all()
-    idiom_items = Idiom.query.filter(
-        Idiom.mastery_level >= 2,
-        Idiom.mastery_level < 5
-    ).all()
+@app.route('/api/test', methods=['GET', 'POST'])
+def unified_test_api():
+    """
+    Unified test API that handles all test types based on parameters
+    
+    GET /api/test?type=regular    - Generate regular test questions
+    GET /api/test?type=mastery    - Generate mastery test questions  
+    POST /api/test                - Submit test responses (test_type in body)
+    
+    Body for POST:
+    {
+        "test_type": "regular|mastery",
+        "responses": [{"id": 1, "type": "vocabulary", "user_sentence": "..."}, ...]
+    }
+    """
+    if request.method == 'GET':
+        # Get test questions
+        test_type = request.args.get('type', 'regular')  # regular or mastery
+        
+        try:
+            manager = UnifiedTestManager(test_type)
+            result = manager.generate_questions()
+            return jsonify(result)
+        except Exception as e:
+            print(f"Error in unified test API: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'message': f'Error generating test: {str(e)}'}), 500
+    
+    elif request.method == 'POST':
+        # Submit test responses
+        data = request.get_json()
+        test_type = data.get('test_type', 'regular')
+        
+        try:
+            manager = UnifiedTestManager(test_type)
+            result = manager.process_submission(data)
+            return jsonify(result)
+        except Exception as e:
+            print(f"Error in unified test submission: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'success': False, 'message': f'Error submitting test: {str(e)}'}), 500
+
+# Legacy endpoints removed - use unified /api/test endpoint instead
+
+# Legacy endpoint removed - use /api/test with POST method instead
+
+# Mastered Words Section
+@app.route('/mastered')
+def mastered_words():
+    """Show all mastered words (mastery_level = 5)"""
+    # Get mastered vocabulary words
+    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
+    
+    # Get mastered phrasal verbs
+    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
+    
+    # Get mastered idioms
+    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
+    
+    # Calculate statistics
+    total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
+    
+    stats = {
+        'vocabulary': len(mastered_vocab),
+        'phrasal_verbs': len(mastered_phrasal),
+        'idioms': len(mastered_idioms),
+        'total': total_mastered
+    }
+    
+    return render_template('mastered_words.html', 
+                         mastered_vocab=mastered_vocab,
+                         mastered_phrasal=mastered_phrasal,
+                         mastered_idioms=mastered_idioms,
+                         stats=stats)
+
+@app.route('/mastered/test')
+def mastered_test():
+    """Legacy route - redirect to unified test system"""
+    return redirect(url_for('test', type='mastery'))
+
+@app.route('/submit-evaluation')
+def submit_evaluation():
+    """Legacy route - redirect to unified results system"""
+    return redirect(url_for('results', type='mastery'))
+
+# Legacy endpoint removed - use /api/test?type=mastery instead
+
+# Legacy endpoint removed - use /api/test with POST method instead
+
+# Legacy endpoint removed - use /api/evaluation instead
+
+# All legacy routes consolidated into unified test and evaluation system
+
+
     
     # Calculate question counts based on available items (target: 10 questions for 10-minute test)
     target_questions = 10
@@ -849,22 +1802,6 @@ def generate_test():
     # Remaining questions go to phrasal verbs, but don't exceed available
     remaining = actual_total - idiom_count - vocab_count
     phrasal_count = min(len(phrasal_items), max(0, remaining))
-    
-    # Adjust if we still have too few questions
-    total_selected = idiom_count + vocab_count + phrasal_count
-    if total_selected < actual_total:
-        # Distribute remaining questions to categories that have more items available
-        remaining_to_distribute = actual_total - total_selected
-        if len(idiom_items) > idiom_count:
-            additional_idioms = min(remaining_to_distribute, len(idiom_items) - idiom_count)
-            idiom_count += additional_idioms
-            remaining_to_distribute -= additional_idioms
-        if remaining_to_distribute > 0 and len(vocab_items) > vocab_count:
-            additional_vocab = min(remaining_to_distribute, len(vocab_items) - vocab_count)
-            vocab_count += additional_vocab
-            remaining_to_distribute -= additional_vocab
-        if remaining_to_distribute > 0 and len(phrasal_items) > phrasal_count:
-            phrasal_count += min(remaining_to_distribute, len(phrasal_items) - phrasal_count)
     
     # Select random items
     selected_questions = []
@@ -916,9 +1853,8 @@ def generate_test():
         'duration_minutes': 10
     })
 
-@app.route('/api/submit-test', methods=['POST'])
-def submit_test():
-    """Handle test submission and generate downloadable JSON"""
+def submit_test_legacy():
+    """Legacy implementation of submit_test"""
     data = request.json
     responses = data.get('responses', [])
     
@@ -936,48 +1872,8 @@ def submit_test():
         'result': test_result
     })
 
-# Mastered Words Section
-@app.route('/mastered')
-def mastered_words():
-    """Show all mastered words (mastery_level = 5)"""
-    # Get mastered vocabulary words
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
-    
-    # Get mastered phrasal verbs
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
-    
-    # Get mastered idioms
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level == 5).all()
-    
-    # Calculate statistics
-    total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
-    
-    stats = {
-        'vocabulary': len(mastered_vocab),
-        'phrasal_verbs': len(mastered_phrasal),
-        'idioms': len(mastered_idioms),
-        'total': total_mastered
-    }
-    
-    return render_template('mastered_words.html', 
-                         mastered_vocab=mastered_vocab,
-                         mastered_phrasal=mastered_phrasal,
-                         mastered_idioms=mastered_idioms,
-                         stats=stats)
-
-@app.route('/mastered/test')
-def mastered_test():
-    """Advanced test for mastered words"""
-    return render_template('mastered_test.html')
-
-@app.route('/submit-evaluation')
-def submit_evaluation():
-    """Page for submitting evaluation results from external system"""
-    return render_template('submit_evaluation.html')
-
-@app.route('/api/mastered-test-questions')
-def get_mastered_test_questions():
-    """Get sentence writing test questions for mastered words only"""
+def get_mastered_test_questions_legacy():
+    """Legacy implementation of get_mastered_test_questions"""
     # Get all mastered items (no need for example sentences as users will create their own)
     mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level == 5).all()
     mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level == 5).all()
@@ -1062,9 +1958,8 @@ def get_mastered_test_questions():
         'instructions': 'Write creative and original sentences using your mastered words to demonstrate true understanding.'
     })
 
-@app.route('/api/submit-mastered-test', methods=['POST'])
-def submit_mastered_test():
-    """Handle mastered test submission and return JSON for external evaluation"""
+def submit_mastered_test_legacy():
+    """Legacy implementation of submit_mastered_test"""
     data = request.get_json()
     responses = data.get('responses', [])
     
@@ -1074,7 +1969,7 @@ def submit_mastered_test():
             'test_date': datetime.utcnow().isoformat(),
             'test_type': 'sentence_writing_mastery_test',
             'total_questions': len(responses),
-            'user_id': 'anonymous',  # You can add user identification later
+            'user_id': 'anonymous',
             'test_version': '1.0'
         },
         'questions_and_responses': []
@@ -1086,7 +1981,6 @@ def submit_mastered_test():
         item_type = response.get('type')
         user_sentence = response.get('user_sentence', '')
         
-        # Get the item details from database
         # Get the item from database
         item = None
         if item_type == 'vocabulary':
@@ -1119,22 +2013,21 @@ def submit_mastered_test():
                     'difficulty_level': item.difficulty_level,
                     'original_example': getattr(item, 'example_sentence', ''),
                     'pronunciation': getattr(item, 'pronunciation', None),
-                    'separable': getattr(item, 'separable', None),  # For phrasal verbs
-                    'origin': getattr(item, 'origin', None)  # For idioms
+                    'separable': getattr(item, 'separable', None),
+                    'origin': getattr(item, 'origin', None)
                 },
                 'evaluation_criteria': {
-                    'word_used_correctly': None,  # To be filled by external evaluator
-                    'demonstrates_understanding': None,  # To be filled by external evaluator
-                    'grammar_correct': None,  # To be filled by external evaluator
-                    'creative_usage': None,  # To be filled by external evaluator
-                    'overall_score': None,  # To be filled by external evaluator (0-100)
-                    'evaluator_comments': ''  # To be filled by external evaluator
+                    'word_used_correctly': None,
+                    'demonstrates_understanding': None,
+                    'grammar_correct': None,
+                    'creative_usage': None,
+                    'overall_score': None,
+                    'evaluator_comments': ''
                 }
             }
             
             test_result['questions_and_responses'].append(question_response)
     
-    # Return the JSON structure for external evaluation
     return jsonify({
         'success': True,
         'message': 'Test responses collected successfully. Use the test_result JSON for external evaluation.',
@@ -1151,87 +2044,6 @@ def submit_mastered_test():
                 'evaluator_comments': 'Optional feedback for the learner'
             }
         }
-    })
-
-@app.route('/api/submit-evaluation-results', methods=['POST'])
-def submit_evaluation_results():
-    """Submit evaluation results and update mastery levels based on external evaluation"""
-    data = request.get_json()
-    evaluated_results = data.get('evaluated_results', [])
-    
-    passed_items = []
-    failed_items = []
-    
-    # Process each evaluated response
-    for result in evaluated_results:
-        item_id = result.get('question_id')
-        item_type = result.get('word_type')
-        evaluation = result.get('evaluation_criteria', {})
-        
-        # Determine if the word should remain mastered based on evaluation
-        overall_score = evaluation.get('overall_score', 0)
-        word_used_correctly = evaluation.get('word_used_correctly', False)
-        demonstrates_understanding = evaluation.get('demonstrates_understanding', False)
-        
-        # Consider it passed if overall score >= 70 AND word is used correctly AND demonstrates understanding
-        passed = (overall_score >= 70 and word_used_correctly and demonstrates_understanding)
-        
-        # Get the item from database
-        item = None
-        if item_type == 'vocabulary':
-            item = db.session.get(VocabularyWord, item_id)
-        elif item_type == 'phrasal_verb':
-            item = db.session.get(PhrasalVerb, item_id)
-        elif item_type == 'idiom':
-            item = db.session.get(Idiom, item_id)
-        
-        if item:
-            # Get the text based on item type
-            if item_type == 'vocabulary':
-                item_text = item.word
-            elif item_type == 'phrasal_verb':
-                item_text = item.phrasal_verb
-            else:  # idiom
-                item_text = item.idiom
-            
-            if passed:
-                passed_items.append({
-                    'id': item.id,
-                    'type': item_type,
-                    'text': item_text,
-                    'score': overall_score
-                })
-            else:
-                # Reset mastery level to 0 and reset practice counter
-                item.mastery_level = 0
-                item.times_practiced = 0
-                item.last_practiced = datetime.utcnow()
-                
-                failed_items.append({
-                    'id': item.id,
-                    'type': item_type,
-                    'text': item_text,
-                    'score': overall_score
-                })
-    
-    # Commit changes to database
-    db.session.commit()
-    
-    # Calculate overall statistics
-    total_questions = len(evaluated_results)
-    passed_count = len(passed_items)
-    score_percentage = round((passed_count / total_questions * 100) if total_questions > 0 else 0)
-    
-    return jsonify({
-        'success': True,
-        'evaluation_complete': True,
-        'score_percentage': score_percentage,
-        'passed_count': passed_count,
-        'failed_count': len(failed_items),
-        'total_questions': total_questions,
-        'passed_items': passed_items,
-        'failed_items': failed_items,
-        'message': f'Evaluation completed! {passed_count}/{total_questions} words remain mastered. {len(failed_items)} words moved back to practice.'
     })
 
 if __name__ == '__main__':
