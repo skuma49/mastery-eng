@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Native Level Words - Mastery English{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-crown text-warning"></i> Native Level Words
+            </h1>
+            <div>
+                <a href="{{ url_for('mastered_words') }}" class="btn btn-info me-2">
+                    <i class="fas fa-trophy"></i> Mastered Words
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        
+        <div class="alert alert-success" role="alert">
+            <i class="fas fa-star"></i>
+            <strong>Congratulations!</strong> These words have reached native level proficiency (Level 11+). 
+            You have complete mastery of these expressions and use them naturally.
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                <h3 class="text-primary">{{ stats.vocabulary }}</h3>
+                <small class="text-muted">Vocabulary Words</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <i class="fas fa-link fa-2x text-success mb-2"></i>
+                <h3 class="text-success">{{ stats.phrasal_verbs }}</h3>
+                <small class="text-muted">Phrasal Verbs</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <i class="fas fa-lightbulb fa-2x text-info mb-2"></i>
+                <h3 class="text-info">{{ stats.idioms }}</h3>
+                <small class="text-muted">Idioms</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <i class="fas fa-crown fa-2x text-warning mb-2"></i>
+                <h3 class="text-warning">{{ stats.total }}</h3>
+                <small class="text-muted">Total Native</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if stats.total == 0 %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <h4>No Native Level Words Yet</h4>
+            <p>Keep practicing! Words will appear here once they reach level 11 through consistent correct usage in tests and flashcards.</p>
+            <a href="{{ url_for('test') }}" class="btn btn-primary me-2">
+                <i class="fas fa-graduation-cap"></i> Take a Test
+            </a>
+            <a href="{{ url_for('flashcards_menu') }}" class="btn btn-success">
+                <i class="fas fa-clone"></i> Practice Flashcards
+            </a>
+        </div>
+    </div>
+</div>
+{% else %}
+
+<!-- Vocabulary Words -->
+{% if native_vocab %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3><i class="fas fa-book text-primary"></i> Native Vocabulary Words</h3>
+        <div class="row">
+            {% for word in native_vocab %}
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 border-primary">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">{{ word.word }}</h5>
+                        {% if word.pronunciation %}
+                        <p class="text-muted small mb-1">{{ word.pronunciation }}</p>
+                        {% endif %}
+                        {% if word.part_of_speech %}
+                        <span class="badge bg-primary mb-2">{{ word.part_of_speech }}</span>
+                        {% endif %}
+                        <p class="card-text">{{ word.definition }}</p>
+                        {% if word.example_sentence %}
+                        <blockquote class="blockquote-footer mt-2">
+                            <small>{{ word.example_sentence }}</small>
+                        </blockquote>
+                        {% endif %}
+                        <div class="mt-2">
+                            <span class="badge bg-warning">Level {{ word.mastery_level }}</span>
+                            {% if word.times_practiced %}
+                            <span class="badge bg-info">{{ word.times_practiced }} practices</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Phrasal Verbs -->
+{% if native_phrasal %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3><i class="fas fa-link text-success"></i> Native Phrasal Verbs</h3>
+        <div class="row">
+            {% for phrasal in native_phrasal %}
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 border-success">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">{{ phrasal.phrasal_verb }}</h5>
+                        <span class="badge bg-success mb-2">
+                            {{ 'Separable' if phrasal.separable else 'Inseparable' }}
+                        </span>
+                        <p class="card-text">{{ phrasal.meaning }}</p>
+                        {% if phrasal.example_sentence %}
+                        <blockquote class="blockquote-footer mt-2">
+                            <small>{{ phrasal.example_sentence }}</small>
+                        </blockquote>
+                        {% endif %}
+                        <div class="mt-2">
+                            <span class="badge bg-warning">Level {{ phrasal.mastery_level }}</span>
+                            {% if phrasal.times_practiced %}
+                            <span class="badge bg-info">{{ phrasal.times_practiced }} practices</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Idioms -->
+{% if native_idioms %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h3><i class="fas fa-lightbulb text-info"></i> Native Idioms</h3>
+        <div class="row">
+            {% for idiom in native_idioms %}
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 border-info">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">{{ idiom.idiom }}</h5>
+                        <p class="card-text">{{ idiom.meaning }}</p>
+                        {% if idiom.example_sentence %}
+                        <blockquote class="blockquote-footer mt-2">
+                            <small>{{ idiom.example_sentence }}</small>
+                        </blockquote>
+                        {% endif %}
+                        <div class="mt-2">
+                            <span class="badge bg-warning">Level {{ idiom.mastery_level }}</span>
+                            {% if idiom.times_practiced %}
+                            <span class="badge bg-info">{{ idiom.times_practiced }} practices</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle"></i> About Native Level
+                </h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="fas fa-star"></i> Native Level (11+)</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Complete mastery achieved</li>
+                            <li><i class="fas fa-check text-success"></i> Natural, instinctive usage</li>
+                            <li><i class="fas fa-check text-success"></i> No longer need practice</li>
+                            <li><i class="fas fa-check text-success"></i> Part of your active vocabulary</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-info"><i class="fas fa-graduation-cap"></i> How to Reach Native Level</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success"></i> Consistent correct usage in tests</li>
+                            <li><i class="fas fa-check text-success"></i> Perfect flashcard performance</li>
+                            <li><i class="fas fa-check text-success"></i> Demonstrate mastery over time</li>
+                            <li><i class="fas fa-check text-success"></i> Reach and exceed level 10</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
