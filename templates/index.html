@@ -92,7 +92,7 @@
 
 <!-- Mastered Words Section -->
 <div class="row mb-4">
-    <div class="col-md-8">
+    <div class="col-12">
         <div class="card dashboard-card" style="background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%); color: white;">
             <div class="card-body text-center py-4">
                 <div class="floating-element">
@@ -124,17 +124,104 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+</div>
+
+<!-- Native Level Words Section -->
+<div class="row mb-4">
+    {% if total_native > 0 %}
+    <div class="col-12">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white;">
+            <div class="card-body text-center py-4">
+                <div class="floating-element">
+                    <i class="fas fa-crown fa-3x mb-3"></i>
+                </div>
+                <h3 class="card-title text-white mb-2">
+                    🎉 Native Level Achievement: {{ total_native }} Words!
+                </h3>
+                <p class="card-text text-white mb-3">
+                    Vocabulary: {{ native_vocab }} • Phrasal Verbs: {{ native_phrasal }} • Idioms: {{ native_idioms }}
+                </p>
+                <div>
+                    <a href="{{ url_for('native_words') }}" class="btn btn-light me-2">
+                        <i class="fas fa-star"></i> View Native Words
+                    </a>
+                    <span class="badge bg-light text-dark fs-6">Level 11+ Mastery</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-md-6">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <div class="card-body text-center py-4">
+                <div class="floating-element">
+                    <i class="fas fa-crown fa-2x mb-3"></i>
+                </div>
+                <h5 class="card-title text-white mb-2">Native Level Goal</h5>
+                <p class="card-text text-white mb-3">Achieve level 11+ mastery to unlock native status</p>
+                <div>
+                    <a href="{{ url_for('native_words') }}" class="btn btn-light me-2">
+                        <i class="fas fa-info-circle"></i> Learn More
+                    </a>
+                    <span class="badge bg-light text-dark">0 Native Words</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
         <div class="card dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             <div class="card-body text-center py-4">
                 <div class="floating-element">
-                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <i class="fas fa-target fa-2x mb-3"></i>
+                </div>
+                <h5 class="card-title text-white mb-2">Path to Native</h5>
+                <p class="card-text text-white mb-3">Master words through consistent practice</p>
+                <div>
+                    <a href="{{ url_for('test') }}" class="btn btn-light me-2">
+                        <i class="fas fa-graduation-cap"></i> Take Test
+                    </a>
+                    <a href="{{ url_for('flashcards_menu') }}" class="btn btn-outline-light">
+                        <i class="fas fa-clone"></i> Practice
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Progress and Tools Section -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="card-body text-center py-4">
+                <div class="floating-element">
+                    <i class="fas fa-chart-line fa-2x mb-3"></i>
                 </div>
                 <h5 class="card-title text-white mb-2">Progress Tracking</h5>
-                <p class="card-text text-white mb-3">View detailed mastery statistics</p>
+                <p class="card-text text-white mb-3">View detailed mastery statistics and trends</p>
                 <a href="{{ url_for('progress') }}" class="btn btn-light">
                     <i class="fas fa-analytics"></i> View Progress
                 </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card dashboard-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+            <div class="card-body text-center py-4">
+                <div class="floating-element">
+                    <i class="fas fa-search fa-2x mb-3"></i>
+                </div>
+                <h5 class="card-title text-white mb-2">Search & Browse</h5>
+                <p class="card-text text-white mb-3">Find specific words or browse collections</p>
+                <div>
+                    <a href="{{ url_for('search') }}" class="btn btn-light me-2">
+                        <i class="fas fa-search"></i> Search
+                    </a>
+                    <a href="{{ url_for('vocabulary_list') }}" class="btn btn-outline-light">
+                        <i class="fas fa-list"></i> Browse
+                    </a>
+                </div>
             </div>
         </div>
     </div>

@@ -14,7 +14,7 @@ class TestConfiguration:
     
     REGULAR_TEST = {
         'name': 'regular',
-        'mastery_levels': [2, 3, 4],  # Exclude mastered (5) and unlearned (0-1)
+        'mastery_levels': [0, 1, 2, 3, 4],  # Exclude only mastered (5), include all others
         'question_distribution': {'idioms': 0.4, 'vocabulary': 0.3, 'phrasal_verbs': 0.3},
         'max_questions': 10,
         'has_timer': True,
@@ -26,7 +26,7 @@ class TestConfiguration:
     
     MASTERY_TEST = {
         'name': 'mastery',
-        'mastery_levels': [5],  # Only mastered items
+        'mastery_levels': [5, 6, 7, 8, 9, 10],  # Mastered items (exclude native level 11+)
         'question_distribution': {'idioms': 0.33, 'vocabulary': 0.33, 'phrasal_verbs': 0.34},
         'max_questions': 10,
         'has_timer': False,
@@ -56,17 +56,28 @@ class UnifiedTestManager:
         """Get items based on test type mastery level requirements"""
         mastery_levels = self.config['mastery_levels']
         
-        # Query items by mastery level
+        # Query items by mastery level (handle NULL/None as 0)
+        from sqlalchemy import or_
+        
         vocab_items = VocabularyWord.query.filter(
-            VocabularyWord.mastery_level.in_(mastery_levels)
+            or_(
+                VocabularyWord.mastery_level.in_(mastery_levels),
+                VocabularyWord.mastery_level.is_(None) if 0 in mastery_levels else False
+            )
         ).all()
         
         phrasal_items = PhrasalVerb.query.filter(
-            PhrasalVerb.mastery_level.in_(mastery_levels)
+            or_(
+                PhrasalVerb.mastery_level.in_(mastery_levels),
+                PhrasalVerb.mastery_level.is_(None) if 0 in mastery_levels else False
+            )
         ).all()
         
         idiom_items = Idiom.query.filter(
-            Idiom.mastery_level.in_(mastery_levels)
+            or_(
+                Idiom.mastery_level.in_(mastery_levels),
+                Idiom.mastery_level.is_(None) if 0 in mastery_levels else False
+            )
         ).all()
         
         return {
@@ -928,11 +939,24 @@ def index():
     phrasal_count = PhrasalVerb.query.count()
     idiom_count = Idiom.query.count()
     
-    # Get mastered counts
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).count()
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).count()
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).count()
+    # Get mastered counts (5-10, excluding native level)
+    from sqlalchemy import and_
+    mastered_vocab = VocabularyWord.query.filter(
+        and_(VocabularyWord.mastery_level >= 5, VocabularyWord.mastery_level <= 10)
+    ).count()
+    mastered_phrasal = PhrasalVerb.query.filter(
+        and_(PhrasalVerb.mastery_level >= 5, PhrasalVerb.mastery_level <= 10)
+    ).count()
+    mastered_idioms = Idiom.query.filter(
+        and_(Idiom.mastery_level >= 5, Idiom.mastery_level <= 10)
+    ).count()
     total_mastered = mastered_vocab + mastered_phrasal + mastered_idioms
+    
+    # Get native level counts
+    native_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level > 10).count()
+    native_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level > 10).count()
+    native_idioms = Idiom.query.filter(Idiom.mastery_level > 10).count()
+    total_native = native_vocab + native_phrasal + native_idioms
     
     # Get recently added items
     recent_vocab = VocabularyWord.query.order_by(VocabularyWord.date_added.desc()).limit(5).all()
@@ -947,6 +971,10 @@ def index():
                          mastered_phrasal=mastered_phrasal,
                          mastered_idioms=mastered_idioms,
                          total_mastered=total_mastered,
+                         native_vocab=native_vocab,
+                         native_phrasal=native_phrasal,
+                         native_idioms=native_idioms,
+                         total_native=total_native,
                          recent_vocab=recent_vocab,
                          recent_phrasal=recent_phrasal,
                          recent_idioms=recent_idioms)
@@ -1105,13 +1133,16 @@ def flashcards(category):
     limit = request.args.get('limit', type=int)
     
     if category == 'vocabulary':
-        items = VocabularyWord.query.all()
+        # Get non-mastered vocabulary words only (mastery_level < 5)
+        items = VocabularyWord.query.filter(VocabularyWord.mastery_level < 5).all()
         template = 'flashcards_vocabulary.html'
     elif category == 'phrasal-verbs':
-        items = PhrasalVerb.query.all()
+        # Get non-mastered phrasal verbs only (mastery_level < 5)
+        items = PhrasalVerb.query.filter(PhrasalVerb.mastery_level < 5).all()
         template = 'flashcards_phrasal.html'
     elif category == 'idioms':
-        items = Idiom.query.all()
+        # Get non-mastered idioms only (mastery_level < 5)
+        items = Idiom.query.filter(Idiom.mastery_level < 5).all()
         template = 'flashcards_idioms.html'
     else:
         flash('Invalid flashcard category!', 'error')
@@ -1137,16 +1168,20 @@ def api_flashcards(category):
     limit = request.args.get('limit', type=int)
     
     if category == 'vocabulary':
-        items = VocabularyWord.query.all()
+        # Get non-mastered vocabulary words only (mastery_level < 5)
+        items = VocabularyWord.query.filter(VocabularyWord.mastery_level < 5).all()
     elif category == 'phrasal-verbs':
-        items = PhrasalVerb.query.all()
+        # Get non-mastered phrasal verbs only (mastery_level < 5)
+        items = PhrasalVerb.query.filter(PhrasalVerb.mastery_level < 5).all()
     elif category == 'idioms':
-        items = Idiom.query.all()
+        # Get non-mastered idioms only (mastery_level < 5)
+        items = Idiom.query.filter(Idiom.mastery_level < 5).all()
     else:
         return jsonify({'error': 'Invalid category'}), 400
     
-    random.shuffle(items)
+    # Convert items to dict for JSON serialization
     items_data = [item.to_dict() for item in items]
+    random.shuffle(items_data)
     
     # Apply limit for mini practice if specified
     if limit and limit > 0:
@@ -1177,7 +1212,7 @@ def update_practice():
             
             # Update mastery level based on correctness
             if correct:
-                item.mastery_level = min((item.mastery_level or 0) + 1, 5)
+                item.mastery_level = min((item.mastery_level or 0) + 1, 15)  # Allow up to native level
             else:
                 item.mastery_level = max((item.mastery_level or 0) - 1, 0)
             
@@ -1595,7 +1630,7 @@ def process_mastery_levels():
                     
                     if vocab_item:
                         old_level = vocab_item.mastery_level
-                        vocab_item.mastery_level += 1
+                        vocab_item.mastery_level = min((vocab_item.mastery_level or 0) + 1, 15)  # Allow up to native level
                         vocab_item.last_practiced = datetime.utcnow()
                         vocab_item.times_practiced += 1
                         try:
@@ -1620,7 +1655,7 @@ def process_mastery_levels():
                     
                     if idiom_item:
                         old_level = idiom_item.mastery_level
-                        idiom_item.mastery_level += 1
+                        idiom_item.mastery_level = min((idiom_item.mastery_level or 0) + 1, 15)  # Allow up to native level
                         idiom_item.last_practiced = datetime.utcnow()
                         idiom_item.times_practiced += 1
                         try:
@@ -1645,7 +1680,7 @@ def process_mastery_levels():
                     
                     if phrasal_item:
                         old_level = phrasal_item.mastery_level
-                        phrasal_item.mastery_level += 1
+                        phrasal_item.mastery_level = min((phrasal_item.mastery_level or 0) + 1, 15)  # Allow up to native level
                         phrasal_item.last_practiced = datetime.utcnow()
                         phrasal_item.times_practiced += 1
                         try:
@@ -1736,15 +1771,23 @@ def unified_test_api():
 # Mastered Words Section
 @app.route('/mastered')
 def mastered_words():
-    """Show all mastered words (mastery_level >= 5)"""
-    # Get mastered vocabulary words
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).all()
+    """Show mastered words (mastery_level 5-10, excluding native level)"""
+    from sqlalchemy import and_
     
-    # Get mastered phrasal verbs
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).all()
+    # Get mastered vocabulary words (5-10, exclude native level)
+    mastered_vocab = VocabularyWord.query.filter(
+        and_(VocabularyWord.mastery_level >= 5, VocabularyWord.mastery_level <= 10)
+    ).all()
     
-    # Get mastered idioms
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).all()
+    # Get mastered phrasal verbs (5-10, exclude native level)
+    mastered_phrasal = PhrasalVerb.query.filter(
+        and_(PhrasalVerb.mastery_level >= 5, PhrasalVerb.mastery_level <= 10)
+    ).all()
+    
+    # Get mastered idioms (5-10, exclude native level)
+    mastered_idioms = Idiom.query.filter(
+        and_(Idiom.mastery_level >= 5, Idiom.mastery_level <= 10)
+    ).all()
     
     # Calculate statistics
     total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
@@ -1762,17 +1805,53 @@ def mastered_words():
                          mastered_idioms=mastered_idioms,
                          stats=stats)
 
+@app.route('/native')
+def native_words():
+    """Show all native level words (mastery_level > 10)"""
+    # Get native level vocabulary words
+    native_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level > 10).all()
+    
+    # Get native level phrasal verbs
+    native_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level > 10).all()
+    
+    # Get native level idioms
+    native_idioms = Idiom.query.filter(Idiom.mastery_level > 10).all()
+    
+    # Calculate statistics
+    total_native = len(native_vocab) + len(native_phrasal) + len(native_idioms)
+    
+    stats = {
+        'vocabulary': len(native_vocab),
+        'phrasal_verbs': len(native_phrasal),
+        'idioms': len(native_idioms),
+        'total': total_native
+    }
+    
+    return render_template('native_words.html', 
+                         native_vocab=native_vocab,
+                         native_phrasal=native_phrasal,
+                         native_idioms=native_idioms,
+                         stats=stats)
+
 @app.route('/mastered/slideshow')
 def mastered_slideshow():
-    """Interactive slideshow for reviewing mastered words, phrasal verbs, and idioms"""
-    # Get mastered vocabulary words
-    mastered_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).all()
+    """Interactive slideshow for reviewing mastered words, phrasal verbs, and idioms (excluding native level)"""
+    from sqlalchemy import and_
     
-    # Get mastered phrasal verbs
-    mastered_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level >= 5).all()
+    # Get mastered vocabulary words (5-10, exclude native level)
+    mastered_vocab = VocabularyWord.query.filter(
+        and_(VocabularyWord.mastery_level >= 5, VocabularyWord.mastery_level <= 10)
+    ).all()
     
-    # Get mastered idioms
-    mastered_idioms = Idiom.query.filter(Idiom.mastery_level >= 5).all()
+    # Get mastered phrasal verbs (5-10, exclude native level)
+    mastered_phrasal = PhrasalVerb.query.filter(
+        and_(PhrasalVerb.mastery_level >= 5, PhrasalVerb.mastery_level <= 10)
+    ).all()
+    
+    # Get mastered idioms (5-10, exclude native level)
+    mastered_idioms = Idiom.query.filter(
+        and_(Idiom.mastery_level >= 5, Idiom.mastery_level <= 10)
+    ).all()
     
     # Convert to dictionaries for JSON serialization
     vocab_data = []
