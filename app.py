@@ -827,8 +827,21 @@ class UnifiedEvaluationManager:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev-secret-key'
+
+# SQLite Database for regular/mastered words (level 0-10)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///vocabulary_app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# PostgreSQL Database for native words (level 11+)
+POSTGRES_URL = os.getenv('POSTGRES_URL')
+
+# Only configure PostgreSQL if URL is provided
+if POSTGRES_URL:
+    app.config['SQLALCHEMY_BINDS'] = {
+        'native': POSTGRES_URL
+    }
+else:
+    app.config['SQLALCHEMY_BINDS'] = {}
 
 db = SQLAlchemy(app)
 
@@ -928,9 +941,217 @@ class Idiom(db.Model):
             'mastery_level': self.mastery_level
         }
 
+# Native Level Models (PostgreSQL Database)
+class NativeVocabularyWord(db.Model):
+    __bind_key__ = 'native'
+    __tablename__ = 'native_vocabulary_words'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    word = db.Column(db.String(100), nullable=False)
+    definition = db.Column(db.Text, nullable=False)
+    pronunciation = db.Column(db.String(100))
+    part_of_speech = db.Column(db.String(50))
+    example_sentence = db.Column(db.Text)
+    difficulty_level = db.Column(db.String(20), default='medium')
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+    times_practiced = db.Column(db.Integer, default=0)
+    last_practiced = db.Column(db.DateTime)
+    mastery_level = db.Column(db.Integer, default=11)  # Starts at native level
+    migrated_from_sqlite = db.Column(db.DateTime, default=datetime.utcnow)
+    original_sqlite_id = db.Column(db.Integer)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'word': self.word,
+            'definition': self.definition,
+            'pronunciation': self.pronunciation,
+            'part_of_speech': self.part_of_speech,
+            'example_sentence': self.example_sentence,
+            'difficulty_level': self.difficulty_level,
+            'date_added': self.date_added.isoformat() if self.date_added else None,
+            'times_practiced': self.times_practiced,
+            'last_practiced': self.last_practiced.isoformat() if self.last_practiced else None,
+            'mastery_level': self.mastery_level,
+            'migrated_from_sqlite': self.migrated_from_sqlite.isoformat() if self.migrated_from_sqlite else None,
+            'original_sqlite_id': self.original_sqlite_id
+        }
+
+class NativePhrasalVerb(db.Model):
+    __bind_key__ = 'native'
+    __tablename__ = 'native_phrasal_verbs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    phrasal_verb = db.Column(db.String(100), nullable=False)
+    meaning = db.Column(db.Text, nullable=False)
+    example_sentence = db.Column(db.Text)
+    separable = db.Column(db.Boolean, default=False)
+    difficulty_level = db.Column(db.String(20), default='medium')
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+    times_practiced = db.Column(db.Integer, default=0)
+    last_practiced = db.Column(db.DateTime)
+    mastery_level = db.Column(db.Integer, default=11)
+    migrated_from_sqlite = db.Column(db.DateTime, default=datetime.utcnow)
+    original_sqlite_id = db.Column(db.Integer)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'phrasal_verb': self.phrasal_verb,
+            'meaning': self.meaning,
+            'example_sentence': self.example_sentence,
+            'separable': self.separable,
+            'difficulty_level': self.difficulty_level,
+            'date_added': self.date_added.isoformat() if self.date_added else None,
+            'times_practiced': self.times_practiced,
+            'last_practiced': self.last_practiced.isoformat() if self.last_practiced else None,
+            'mastery_level': self.mastery_level,
+            'migrated_from_sqlite': self.migrated_from_sqlite.isoformat() if self.migrated_from_sqlite else None,
+            'original_sqlite_id': self.original_sqlite_id
+        }
+
+class NativeIdiom(db.Model):
+    __bind_key__ = 'native'
+    __tablename__ = 'native_idioms'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    idiom = db.Column(db.String(200), nullable=False)
+    meaning = db.Column(db.Text, nullable=False)
+    example_sentence = db.Column(db.Text)
+    origin = db.Column(db.Text)
+    difficulty_level = db.Column(db.String(20), default='medium')
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+    times_practiced = db.Column(db.Integer, default=0)
+    last_practiced = db.Column(db.DateTime)
+    mastery_level = db.Column(db.Integer, default=11)
+    migrated_from_sqlite = db.Column(db.DateTime, default=datetime.utcnow)
+    original_sqlite_id = db.Column(db.Integer)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'idiom': self.idiom,
+            'meaning': self.meaning,
+            'example_sentence': self.example_sentence,
+            'origin': self.origin,
+            'difficulty_level': self.difficulty_level,
+            'date_added': self.date_added.isoformat() if self.date_added else None,
+            'times_practiced': self.times_practiced,
+            'last_practiced': self.last_practiced.isoformat() if self.last_practiced else None,
+            'mastery_level': self.mastery_level,
+            'migrated_from_sqlite': self.migrated_from_sqlite.isoformat() if self.migrated_from_sqlite else None,
+            'original_sqlite_id': self.original_sqlite_id
+        }
+
+# Migration Functions
+def migrate_to_native_db(item, item_type):
+    """Migrate a word from SQLite to PostgreSQL when it reaches native level (11+)"""
+    # Check if PostgreSQL is configured
+    if not POSTGRES_URL:
+        print(f"PostgreSQL not configured, keeping {item_type} in SQLite")
+        db.session.commit()
+        return
+    
+    try:
+        if item_type == 'vocabulary':
+            # Create native vocabulary word
+            native_word = NativeVocabularyWord(
+                word=item.word,
+                definition=item.definition,
+                pronunciation=item.pronunciation,
+                part_of_speech=item.part_of_speech,
+                example_sentence=item.example_sentence,
+                difficulty_level=item.difficulty_level,
+                date_added=item.date_added,
+                times_practiced=item.times_practiced,
+                last_practiced=item.last_practiced,
+                mastery_level=item.mastery_level,
+                original_sqlite_id=item.id
+            )
+            db.session.add(native_word)
+            db.session.delete(item)  # Remove from SQLite
+            
+        elif item_type == 'phrasal_verb':
+            # Create native phrasal verb
+            native_phrasal = NativePhrasalVerb(
+                phrasal_verb=item.phrasal_verb,
+                meaning=item.meaning,
+                example_sentence=item.example_sentence,
+                separable=item.separable,
+                difficulty_level=item.difficulty_level,
+                date_added=item.date_added,
+                times_practiced=item.times_practiced,
+                last_practiced=item.last_practiced,
+                mastery_level=item.mastery_level,
+                original_sqlite_id=item.id
+            )
+            db.session.add(native_phrasal)
+            db.session.delete(item)  # Remove from SQLite
+            
+        elif item_type == 'idiom':
+            # Create native idiom
+            native_idiom = NativeIdiom(
+                idiom=item.idiom,
+                meaning=item.meaning,
+                example_sentence=item.example_sentence,
+                origin=item.origin,
+                difficulty_level=item.difficulty_level,
+                date_added=item.date_added,
+                times_practiced=item.times_practiced,
+                last_practiced=item.last_practiced,
+                mastery_level=item.mastery_level,
+                original_sqlite_id=item.id
+            )
+            db.session.add(native_idiom)
+            db.session.delete(item)  # Remove from SQLite
+        
+        db.session.commit()
+        print(f"✅ Migrated {item_type} to native database: {getattr(item, 'word' if item_type == 'vocabulary' else item_type.replace('_', '_'))}")
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error migrating {item_type} to native database: {e}")
+        return False
+
+def check_and_migrate_native_words():
+    """Check for words that have reached native level and migrate them"""
+    try:
+        # Check vocabulary words
+        vocab_to_migrate = VocabularyWord.query.filter(VocabularyWord.mastery_level > 10).all()
+        for vocab in vocab_to_migrate:
+            migrate_to_native_db(vocab, 'vocabulary')
+        
+        # Check phrasal verbs
+        phrasal_to_migrate = PhrasalVerb.query.filter(PhrasalVerb.mastery_level > 10).all()
+        for phrasal in phrasal_to_migrate:
+            migrate_to_native_db(phrasal, 'phrasal_verb')
+        
+        # Check idioms
+        idioms_to_migrate = Idiom.query.filter(Idiom.mastery_level > 10).all()
+        for idiom in idioms_to_migrate:
+            migrate_to_native_db(idiom, 'idiom')
+            
+    except Exception as e:
+        print(f"Error during migration check: {e}")
+
 # Create tables
 with app.app_context():
-    db.create_all()
+    try:
+        # Create SQLite tables
+        db.create_all()
+        print("✅ SQLite tables ready")
+        
+        # Create PostgreSQL tables if configured
+        if POSTGRES_URL:
+            db.create_all(bind_key='native')
+            print("✅ PostgreSQL tables ready")
+        else:
+            print("ℹ️ PostgreSQL not configured - running with SQLite only")
+            
+    except Exception as e:
+        print(f"⚠️ Database initialization error: {e}")
+        print("App will continue but some features may not work properly")
 
 @app.route('/')
 def index():
@@ -1216,7 +1437,12 @@ def update_practice():
             else:
                 item.mastery_level = max((item.mastery_level or 0) - 1, 0)
             
-            db.session.commit()
+            # Check if word reached native level and migrate to PostgreSQL
+            if item.mastery_level > 10:
+                migrate_to_native_db(item, category.replace('-', '_'))
+            else:
+                db.session.commit()
+                
             return jsonify({'success': True})
         else:
             return jsonify({'error': 'Item not found'}), 404
@@ -1634,7 +1860,11 @@ def process_mastery_levels():
                         vocab_item.last_practiced = datetime.utcnow()
                         vocab_item.times_practiced += 1
                         try:
-                            db.session.commit()
+                            # Check if word reached native level and migrate to PostgreSQL
+                            if vocab_item.mastery_level > 10:
+                                migrate_to_native_db(vocab_item, 'vocabulary')
+                            else:
+                                db.session.commit()
                         except Exception as db_error:
                             db.session.rollback()
                             print(f"Database error for vocabulary item {word_phrase}: {db_error}")
@@ -1659,7 +1889,11 @@ def process_mastery_levels():
                         idiom_item.last_practiced = datetime.utcnow()
                         idiom_item.times_practiced += 1
                         try:
-                            db.session.commit()
+                            # Check if idiom reached native level and migrate to PostgreSQL
+                            if idiom_item.mastery_level > 10:
+                                migrate_to_native_db(idiom_item, 'idiom')
+                            else:
+                                db.session.commit()
                         except Exception as db_error:
                             db.session.rollback()
                             print(f"Database error for idiom item {word_phrase}: {db_error}")
@@ -1684,7 +1918,11 @@ def process_mastery_levels():
                         phrasal_item.last_practiced = datetime.utcnow()
                         phrasal_item.times_practiced += 1
                         try:
-                            db.session.commit()
+                            # Check if phrasal verb reached native level and migrate to PostgreSQL
+                            if phrasal_item.mastery_level > 10:
+                                migrate_to_native_db(phrasal_item, 'phrasal_verb')
+                            else:
+                                db.session.commit()
                         except Exception as db_error:
                             db.session.rollback()
                             print(f"Database error for phrasal verb item {word_phrase}: {db_error}")
@@ -1807,31 +2045,76 @@ def mastered_words():
 
 @app.route('/native')
 def native_words():
-    """Show all native level words (mastery_level > 10)"""
-    # Get native level vocabulary words
-    native_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level > 10).all()
+    """Show all native level words from PostgreSQL database"""
+    try:
+        if not POSTGRES_URL:
+            # If PostgreSQL not configured, check SQLite for native level words
+            native_vocab = VocabularyWord.query.filter(VocabularyWord.mastery_level > 10).all()
+            native_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level > 10).all()
+            native_idioms = Idiom.query.filter(Idiom.mastery_level > 10).all()
+        else:
+            # Query PostgreSQL for native words
+            native_vocab = NativeVocabularyWord.query.all()
+            native_phrasal = NativePhrasalVerb.query.all()
+            native_idioms = NativeIdiom.query.all()
+        
+        # Calculate statistics
+        total_native = len(native_vocab) + len(native_phrasal) + len(native_idioms)
+        
+        stats = {
+            'vocabulary': len(native_vocab),
+            'phrasal_verbs': len(native_phrasal),
+            'idioms': len(native_idioms),
+            'total': total_native,
+            'source': 'PostgreSQL' if POSTGRES_URL else 'SQLite'
+        }
+        
+        return render_template('native_words.html', 
+                             native_vocab=native_vocab,
+                             native_phrasal=native_phrasal,
+                             native_idioms=native_idioms,
+                             stats=stats)
+    except Exception as e:
+        print(f"Error fetching native words: {e}")
+        return render_template('native_words.html', 
+                             native_vocab=[],
+                             native_phrasal=[],
+                             native_idioms=[],
+                             stats={'vocabulary': 0, 'phrasal_verbs': 0, 'idioms': 0, 'total': 0, 'source': 'Error'})
+
+@app.route('/test_native_migration')
+def test_native_migration():
+    """Test route to demonstrate PostgreSQL migration"""
+    if not POSTGRES_URL:
+        return "PostgreSQL not configured. Cannot test migration."
     
-    # Get native level phrasal verbs
-    native_phrasal = PhrasalVerb.query.filter(PhrasalVerb.mastery_level > 10).all()
-    
-    # Get native level idioms
-    native_idioms = Idiom.query.filter(Idiom.mastery_level > 10).all()
-    
-    # Calculate statistics
-    total_native = len(native_vocab) + len(native_phrasal) + len(native_idioms)
-    
-    stats = {
-        'vocabulary': len(native_vocab),
-        'phrasal_verbs': len(native_phrasal),
-        'idioms': len(native_idioms),
-        'total': total_native
-    }
-    
-    return render_template('native_words.html', 
-                         native_vocab=native_vocab,
-                         native_phrasal=native_phrasal,
-                         native_idioms=native_idioms,
-                         stats=stats)
+    try:
+        # Find a word with high mastery level to test migration
+        test_word = VocabularyWord.query.filter(VocabularyWord.mastery_level >= 5).first()
+        
+        if not test_word:
+            return "No words with mastery level >= 5 found for testing."
+        
+        # Temporarily increase mastery level to trigger migration
+        original_level = test_word.mastery_level
+        test_word.mastery_level = 11  # Set to native level
+        
+        # Test migration
+        migrate_to_native_db(test_word, 'vocabulary')
+        
+        # Check if word moved to PostgreSQL
+        native_count = NativeVocabularyWord.query.count()
+        
+        return f"""
+        <h2>🧪 Migration Test Results</h2>
+        <p>✅ Test word '{test_word.word}' migrated from level {original_level} to PostgreSQL</p>
+        <p>📊 Total native words in PostgreSQL: {native_count}</p>
+        <p><a href="/native">View Native Words</a></p>
+        <p><a href="/">Back to Dashboard</a></p>
+        """
+        
+    except Exception as e:
+        return f"❌ Migration test failed: {e}"
 
 @app.route('/mastered/slideshow')
 def mastered_slideshow():
