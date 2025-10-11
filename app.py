@@ -462,17 +462,47 @@ class UnifiedEvaluationManager:
         processed_results = []
         for result in evaluated_results:
             evaluation = result.get('evaluation_criteria', {})
+            question_id = result.get('question_id')
+            word_type = result.get('word_type')
+            
+            # Look up the actual word from database using ID and type
+            db_item = self.get_item_by_id_and_type(question_id, word_type)
+            if db_item:
+                if word_type == 'vocabulary':
+                    target_word = db_item.word
+                elif word_type == 'phrasal_verb':
+                    target_word = db_item.phrasal_verb
+                elif word_type == 'idiom':
+                    target_word = db_item.idiom
+                else:
+                    target_word = 'Unknown'
+            else:
+                print(f"Warning: Could not find {word_type} with ID {question_id} in database")
+                target_word = 'Unknown'
+            
             processed_result = {
-                'question_id': result.get('question_id'),
+                'question_id': question_id,
                 'test_type': 'mastery',
-                'word_type': result.get('word_type'),
-                'target_word': result.get('target_word', ''),
+                'word_type': word_type,
+                'target_word': target_word,
                 'user_response': result.get('user_sentence', ''),
                 'word_details': result.get('word_details', {}),
                 'evaluation': evaluation,
                 'has_evaluation': True
             }
             processed_results.append(processed_result)
+        
+        # Create frontend-compatible detailed evaluation
+        detailed_evaluation = []
+        for result in processed_results:
+            detailed_evaluation.append({
+                'Question #': result.get('question_id', ''),
+                'Type': result.get('word_type', 'vocabulary'),
+                'Word/Phrase': result.get('target_word', 'Unknown'),
+                'User Answer': result.get('user_response', ''),
+                'Score': result.get('evaluation', {}).get('overall_score', 0),
+                'Feedback': result.get('evaluation', {}).get('evaluator_comments', '')
+            })
         
         return {
             'success': True,
@@ -484,7 +514,10 @@ class UnifiedEvaluationManager:
             },
             'results': processed_results,
             'can_update_mastery': True,
-            'evaluation_complete': True
+            'evaluation_complete': True,
+            # Add frontend-compatible format
+            'Summary': {},
+            'Detailed Evaluation': detailed_evaluation
         }
     
     def find_item_id_by_word(self, word_phrase, word_type):
@@ -516,7 +549,7 @@ class UnifiedEvaluationManager:
             # If details is a list, process each item directly
             for item in details:
                 # Map the actual JSON field names to our expected format
-                word_phrase = item.get('Word/Phrase', item.get('word', ''))
+                word_phrase = item.get('Word/Phrase', item.get('word', item.get('text', item.get('phrase', ''))))
                 user_answer = item.get('User Answer', item.get('user_answer', ''))
                 score = item.get('Score', item.get('score', 0))
                 feedback = item.get('Feedback', item.get('feedback', ''))
@@ -541,7 +574,7 @@ class UnifiedEvaluationManager:
                         'feedback': feedback
                     },
                     'evaluation': {
-                        'correct': score >= 7,  # Consider score >= 7 as correct
+                        'correct': score >= 70,  # Consider score >= 70/100 as correct
                         'score': score,
                         'feedback': feedback
                     },
@@ -576,7 +609,7 @@ class UnifiedEvaluationManager:
                     # Handle case where category contains a list of results
                     for item in category_data:
                         # Map the actual JSON field names to our expected format
-                        word_phrase = item.get('Word/Phrase', item.get('word', ''))
+                        word_phrase = item.get('Word/Phrase', item.get('word', item.get('text', item.get('phrase', ''))))
                         user_answer = item.get('User Answer', item.get('user_answer', ''))
                         score = item.get('Score', item.get('score', 0))
                         feedback = item.get('Feedback', item.get('feedback', ''))
@@ -595,7 +628,7 @@ class UnifiedEvaluationManager:
                                 'feedback': feedback
                             },
                             'evaluation': {
-                                'correct': score >= 7,  # Consider score >= 7 as correct
+                                'correct': score >= 70,  # Consider score >= 70/100 as correct
                                 'score': score,
                                 'feedback': feedback
                             },
@@ -615,6 +648,18 @@ class UnifiedEvaluationManager:
         if 'total_questions' in data:
             summary['total_questions'] = data['total_questions']
         
+        # Create frontend-compatible detailed evaluation
+        detailed_evaluation = []
+        for result in processed_results:
+            detailed_evaluation.append({
+                'Question #': result.get('question_id', ''),
+                'Type': result.get('word_type', 'vocabulary'),
+                'Word/Phrase': result.get('target_word', 'Unknown'),
+                'User Answer': result.get('user_response', ''),
+                'Score': result.get('evaluation', {}).get('score', 0),
+                'Feedback': result.get('evaluation', {}).get('feedback', '')
+            })
+        
         return {
             'success': True,
             'format': 'evaluation_report',
@@ -626,7 +671,10 @@ class UnifiedEvaluationManager:
             },
             'results': processed_results,
             'can_update_mastery': True,
-            'evaluation_complete': True
+            'evaluation_complete': True,
+            # Add frontend-compatible format
+            'Summary': summary,
+            'Detailed Evaluation': detailed_evaluation
         }
     
     def process_raw_test_results(self, data):
@@ -641,9 +689,15 @@ class UnifiedEvaluationManager:
             # Get current mastery level from database
             question_id = question.get('question_id', '')
             word_type = question.get('word_type', 'vocabulary')
+            # Try multiple field names for the word text
+            word_text = question.get('text', question.get('word', question.get('phrase', '')))
             
-            # Fetch current database item to get actual mastery level
+            # First try to fetch by ID, then by word text if ID fails
             current_item = self.get_item_by_id_and_type(question_id, word_type)
+            if not current_item and word_text:
+                # Try to find by word text
+                current_item = self.find_item_by_word(word_text, word_type)
+            
             current_mastery_level = current_item.mastery_level if current_item else 0
             
             # Map the raw test format to our expected format
@@ -651,10 +705,10 @@ class UnifiedEvaluationManager:
                 'question_id': question_id,
                 'test_type': data.get('test_type', 'regular'),
                 'word_type': word_type,
-                'target_word': question.get('word', ''),
+                'target_word': word_text,  # Use the detected word text
                 'user_response': question.get('user_answer', ''),
                 'word_details': {
-                    'word': question.get('word', ''),
+                    'word': word_text,  # Use the detected word text
                     'definition': question.get('definition', ''),
                     'example': question.get('example', '')
                 },
@@ -669,6 +723,18 @@ class UnifiedEvaluationManager:
             }
             processed_results.append(processed_result)
         
+        # Create frontend-compatible detailed evaluation
+        detailed_evaluation = []
+        for result in processed_results:
+            detailed_evaluation.append({
+                'Question #': result.get('question_id', ''),
+                'Type': result.get('word_type', 'vocabulary'),
+                'Word/Phrase': result.get('target_word', 'Unknown'),
+                'User Answer': result.get('user_response', ''),
+                'Score': result.get('evaluation', {}).get('score') or 0,
+                'Feedback': result.get('evaluation', {}).get('feedback', 'Awaiting evaluation')
+            })
+        
         return {
             'success': True,
             'format': 'raw_test_results',
@@ -682,7 +748,10 @@ class UnifiedEvaluationManager:
             'results': processed_results,
             'can_update_mastery': False,  # Raw results need evaluation first
             'evaluation_complete': False,
-            'message': 'Raw test results uploaded successfully. Evaluation is required before mastery levels can be updated.'
+            'message': 'Raw test results uploaded successfully. Evaluation is required before mastery levels can be updated.',
+            # Add frontend-compatible format
+            'Summary': {},
+            'Detailed Evaluation': detailed_evaluation
         }
     
     def update_mastery_levels(self, processed_data, threshold=None):
@@ -699,9 +768,72 @@ class UnifiedEvaluationManager:
                 'message': 'Evaluation not complete. Cannot update mastery levels.'
             }
         
-        # Load configuration from environment variables
-        excellent_threshold = int(os.getenv('MASTERY_EXCELLENT_THRESHOLD', 7))
-        poor_threshold = int(os.getenv('MASTERY_POOR_THRESHOLD', 3))
+        # First, detect the scale of scores in the actual data
+        all_scores = []
+        for result in processed_data['results']:
+            evaluation = result.get('evaluation', {})
+            score = evaluation.get('score', evaluation.get('overall_score', 0))
+            if score is not None and score > 0:
+                all_scores.append(float(score))
+        
+        # Detect scale based on actual score values
+        detected_scale_100 = False
+        if all_scores:
+            max_score = max(all_scores)
+            avg_score = sum(all_scores) / len(all_scores)
+            
+            # If any score > 10 OR average score > 10, likely 0-100 scale
+            if max_score > 10 or avg_score > 10:
+                detected_scale_100 = True
+                print(f"📊 Detected 0-100 scale (max: {max_score:.1f}, avg: {avg_score:.1f})")
+            else:
+                print(f"📊 Detected 0-10 scale (max: {max_score:.1f}, avg: {avg_score:.1f})")
+        
+        # Load configuration from environment variables or use provided threshold
+        if threshold is not None:
+            # Use user-provided threshold
+            user_threshold = float(threshold)
+            
+            if detected_scale_100:
+                # Data is in 0-100 scale
+                if user_threshold <= 10:
+                    # User gave 0-10 threshold, convert to 0-100
+                    excellent_threshold = user_threshold * 10
+                    poor_threshold = max(10, (user_threshold - 4) * 10)
+                    print(f"🔄 Converted user threshold {user_threshold}/10 → {excellent_threshold}/100")
+                else:
+                    # User gave 0-100 threshold, use as-is
+                    excellent_threshold = user_threshold
+                    poor_threshold = max(10, user_threshold - 40)
+                    print(f"✅ Using user threshold {excellent_threshold}/100")
+            else:
+                # Data is in 0-10 scale
+                if user_threshold > 10:
+                    # User gave 0-100 threshold, convert to 0-10
+                    excellent_threshold = user_threshold / 10
+                    poor_threshold = max(1, (user_threshold - 40) / 10)
+                    print(f"🔄 Converted user threshold {user_threshold}/100 → {excellent_threshold}/10")
+                else:
+                    # User gave 0-10 threshold, use as-is
+                    excellent_threshold = user_threshold
+                    poor_threshold = max(1, user_threshold - 4)
+                    print(f"✅ Using user threshold {excellent_threshold}/10")
+        else:
+            # Use environment variables
+            env_excellent = int(os.getenv('MASTERY_EXCELLENT_THRESHOLD', 7))
+            env_poor = int(os.getenv('MASTERY_POOR_THRESHOLD', 3))
+            
+            if detected_scale_100:
+                # Convert env vars from 0-10 to 0-100 scale
+                excellent_threshold = env_excellent * 10
+                poor_threshold = env_poor * 10
+                print(f"🔄 Converted env threshold {env_excellent}/10 → {excellent_threshold}/100")
+            else:
+                # Use env vars as-is for 0-10 scale
+                excellent_threshold = env_excellent
+                poor_threshold = env_poor
+                print(f"✅ Using env threshold {excellent_threshold}/10")
+        
         excellent_action = os.getenv('MASTERY_EXCELLENT_ACTION', 'increase')
         poor_action = os.getenv('MASTERY_POOR_ACTION', 'decrease')
         medium_action = os.getenv('MASTERY_MEDIUM_ACTION', 'maintain')
@@ -805,6 +937,15 @@ class UnifiedEvaluationManager:
             'changes': updated_items,  # Use 'changes' key for frontend compatibility
             'passed_items': updated_items,  # Keep for backward compatibility
             'failed_items': failed_items,
+            'threshold_used': excellent_threshold,
+            'poor_threshold_used': poor_threshold,
+            'detected_scale': '0-100' if detected_scale_100 else '0-10',
+            'scale_info': {
+                'detected_scale_100': detected_scale_100,
+                'max_score_found': max(all_scores) if all_scores else 0,
+                'avg_score_found': sum(all_scores) / len(all_scores) if all_scores else 0,
+                'total_scores_analyzed': len(all_scores)
+            },
             'statistics': {
                 'total_questions': total_questions,
                 'updated_count': updated_count,
@@ -823,6 +964,16 @@ class UnifiedEvaluationManager:
             return db.session.get(PhrasalVerb, item_id)
         elif item_type == 'idiom':
             return db.session.get(Idiom, item_id)
+        return None
+    
+    def find_item_by_word(self, word_text, item_type):
+        """Find database item by word text (fallback when ID lookup fails)"""
+        if item_type == 'vocabulary':
+            return VocabularyWord.query.filter_by(word=word_text).first()
+        elif item_type == 'phrasal_verb':
+            return PhrasalVerb.query.filter_by(phrasal_verb=word_text).first()
+        elif item_type == 'idiom':
+            return Idiom.query.filter_by(idiom=word_text).first()
         return None
 
 app = Flask(__name__)
@@ -2009,26 +2160,83 @@ def unified_test_api():
 # Mastered Words Section
 @app.route('/mastered')
 def mastered_words():
-    """Show mastered words (mastery_level 5-10, excluding native level)"""
+    """Show mastered words (mastery_level 5-10, excluding native level) sorted by mastery level"""
     from sqlalchemy import and_
     
-    # Get mastered vocabulary words (5-10, exclude native level)
+    # Get mastered vocabulary words (5-10, exclude native level) ordered by mastery level desc
     mastered_vocab = VocabularyWord.query.filter(
         and_(VocabularyWord.mastery_level >= 5, VocabularyWord.mastery_level <= 10)
-    ).all()
+    ).order_by(VocabularyWord.mastery_level.desc(), VocabularyWord.word.asc()).all()
     
-    # Get mastered phrasal verbs (5-10, exclude native level)
+    # Get mastered phrasal verbs (5-10, exclude native level) ordered by mastery level desc
     mastered_phrasal = PhrasalVerb.query.filter(
         and_(PhrasalVerb.mastery_level >= 5, PhrasalVerb.mastery_level <= 10)
-    ).all()
+    ).order_by(PhrasalVerb.mastery_level.desc(), PhrasalVerb.phrasal_verb.asc()).all()
     
-    # Get mastered idioms (5-10, exclude native level)
+    # Get mastered idioms (5-10, exclude native level) ordered by mastery level desc
     mastered_idioms = Idiom.query.filter(
         and_(Idiom.mastery_level >= 5, Idiom.mastery_level <= 10)
-    ).all()
+    ).order_by(Idiom.mastery_level.desc(), Idiom.idiom.asc()).all()
+    
+    # Combine all items with type information for unified display
+    all_mastered_items = []
+    
+    # Add vocabulary words
+    for word in mastered_vocab:
+        all_mastered_items.append({
+            'id': word.id,
+            'type': 'Vocabulary',
+            'word_text': word.word,
+            'definition': word.definition,
+            'pronunciation': word.pronunciation,
+            'part_of_speech': word.part_of_speech,
+            'example_sentence': word.example_sentence,
+            'mastery_level': word.mastery_level,
+            'times_practiced': word.times_practiced,
+            'last_practiced': word.last_practiced,
+            'date_added': word.date_added,
+            'difficulty_level': word.difficulty_level
+        })
+    
+    # Add phrasal verbs
+    for phrasal in mastered_phrasal:
+        all_mastered_items.append({
+            'id': phrasal.id,
+            'type': 'Phrasal Verb',
+            'word_text': phrasal.phrasal_verb,
+            'definition': phrasal.meaning,
+            'pronunciation': None,
+            'part_of_speech': 'Separable' if phrasal.separable else 'Inseparable',
+            'example_sentence': phrasal.example_sentence,
+            'mastery_level': phrasal.mastery_level,
+            'times_practiced': phrasal.times_practiced,
+            'last_practiced': phrasal.last_practiced,
+            'date_added': phrasal.date_added,
+            'difficulty_level': phrasal.difficulty_level
+        })
+    
+    # Add idioms
+    for idiom in mastered_idioms:
+        all_mastered_items.append({
+            'id': idiom.id,
+            'type': 'Idiom',
+            'word_text': idiom.idiom,
+            'definition': idiom.meaning,
+            'pronunciation': None,
+            'part_of_speech': None,
+            'example_sentence': idiom.example_sentence,
+            'mastery_level': idiom.mastery_level,
+            'times_practiced': idiom.times_practiced,
+            'last_practiced': idiom.last_practiced,
+            'date_added': idiom.date_added,
+            'difficulty_level': idiom.difficulty_level
+        })
+    
+    # Sort by mastery level (descending), then by word text (ascending)
+    all_mastered_items.sort(key=lambda x: (-x['mastery_level'], x['word_text'].lower()))
     
     # Calculate statistics
-    total_mastered = len(mastered_vocab) + len(mastered_phrasal) + len(mastered_idioms)
+    total_mastered = len(all_mastered_items)
     
     stats = {
         'vocabulary': len(mastered_vocab),
@@ -2041,6 +2249,7 @@ def mastered_words():
                          mastered_vocab=mastered_vocab,
                          mastered_phrasal=mastered_phrasal,
                          mastered_idioms=mastered_idioms,
+                         all_mastered_items=all_mastered_items,
                          stats=stats)
 
 @app.route('/native')

@@ -1495,10 +1495,10 @@ function updateMasteryLevels() {
         return;
     }
     
-    const threshold = prompt('Enter minimum score threshold for mastery level updates (default: 7):', '7');
+    const threshold = prompt('Enter minimum score threshold for mastery level updates (default: 80):', '80');
     if (threshold === null) return; // User cancelled
     
-    const numericThreshold = parseInt(threshold) || 7;
+    const numericThreshold = parseInt(threshold) || 80;
     
     // Show processing state
     const resultsDiv = document.getElementById('results-display');

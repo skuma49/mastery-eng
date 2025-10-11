@@ -149,10 +149,10 @@
                                         <div class="mb-3">
                                             <label for="score-threshold" class="form-label">Score Threshold for Mastery Increase</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" id="score-threshold" value="8" min="1" max="10">
-                                                <span class="input-group-text">/10</span>
+                                                <input type="number" class="form-control" id="score-threshold" value="80" min="10" max="100">
+                                                <span class="input-group-text">/100</span>
                                             </div>
-                                            <small class="form-text text-muted">Items scoring at or above this threshold will have their mastery level increased by 1.</small>
+                                            <small class="form-text text-muted">Items scoring at or above this threshold will have their mastery level increased by 1. (Scale: 0-100)</small>
                                         </div>
                                     </div>
                                 </div>
@@ -619,14 +619,15 @@ class EvaluationResultsManager {
                         <hr>
                         <small class="text-muted">
                             <i class="fas fa-info-circle"></i> 
-                            Items scoring ${masteryResponse.threshold_used} or higher had their mastery level increased by 1.
+                            Items scoring ${masteryResponse.threshold_used} or higher (${masteryResponse.detected_scale} scale) had their mastery level increased by 1.
+                            <br>Scale detected: ${masteryResponse.scale_info ? `Max score: ${masteryResponse.scale_info.max_score_found.toFixed(1)}, Avg: ${masteryResponse.scale_info.avg_score_found.toFixed(1)}` : 'Auto-detected'}
                         </small>
                     </div>`;
             } else {
                 analysisHtml += `
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> 
-                        No items met the threshold of ${masteryResponse.threshold_used} points to increase mastery level.
+                        No items met the threshold of ${masteryResponse.threshold_used} points (${masteryResponse.detected_scale} scale) to increase mastery level.
                         Keep practicing to improve your scores!
                     </div>`;
             }
